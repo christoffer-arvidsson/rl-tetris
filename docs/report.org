@@ -1,0 +1,37 @@
+#+TITLE: Advanced machine learning - Homework B
+#+SUBTITLE: Playing Tetris using Reinforcement Learning
+#+SETUPFILE: ~/Dropbox/org/org-roam/setup_file.org
+#+EXPORT_FILE_NAME: ./q-tetris
+
+* Shared
+:PROPERTIES:
+:header-args: :session tetris-report :eval never-export :async yes :noweb yes
+:END:
+** Hello
+
+** Appendix
+*** Task a
+#+begin_src jupyter-python :results silent
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+plt.close('all')
+plt.style.use('seaborn-deep')
+%matplotlib inline
+#+end_src
+
+#+name: task-a
+#+begin_src jupyter-python
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'same') / w
+
+rewards = np.load('../src/log/10000_rewards.npy')
+episodes = np.arange(0, len(rewards))
+fig, ax = plt.subplots(1,1, facecolor='w')
+ax.plot(episodes, rewards, label='Reward')
+ax.plot(episodes, moving_average(rewards, 100), label='Rolling average')
+#+end_src
+
+#+RESULTS: task-a
+[[file:./.ob-jupyter/bcb20f9b42616ecfcb60d415450e290512e2bcca.png]]
