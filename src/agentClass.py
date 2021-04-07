@@ -6,9 +6,18 @@ import h5py
 import time
 from datetime import datetime
 from tensorboardX import SummaryWriter
+from functools import reduce
 
 # This file provides the skeleton structure for the classes TQAgent and TDQNAgent to be completed by you, the student.
 # Locations starting with # TO BE COMPLETED BY STUDENT indicates missing code that should be written by you.
+#
+def encode_state(board_state, class_state):
+    binary_rep = np.power(2, np.arange(0,16), dtype=int)
+    board_id = (binary_rep * board_state.flatten()).sum(dtype=int)
+    # board_id = reduce(lambda a,b: 2*a+b, board_state.flatten().astype(bool))
+    class_id = class_state << 16
+    return board_id + class_id
+
 class TQAgent:
     # Agent for learning to play tetris using Q-learning
     def __init__(self,alpha,epsilon,episode_count):
@@ -54,7 +63,7 @@ class TQAgent:
         self.q_table = np.zeros((self.num_states, self.max_num_actions), dtype=np.float32)
 
         # Initialize curr state
-        self.fn_read_state()
+        # self.fn_read_state()
 
         # Legal move matrix (entry for each piece, masks every possible action)
         self.legal_masks = compute_legal_masks(self)
@@ -63,6 +72,7 @@ class TQAgent:
         # TO BE COMPLETED BY STUDENT
         # Here you can load the Q-table (to Q-table of self) from the input parameter strategy_file (used to test how the agent plays)
         self.q_table = np.load(strategy_file)
+
 
     def fn_read_state(self):
         # TO BE COMPLETED BY STUDENT
@@ -77,12 +87,10 @@ class TQAgent:
         # 'self.gameboard.N_col' number of columns in gameboard
         # 'self.gameboard.board[index_row,index_col]' table indicating if row 'index_row' and column 'index_col' is occupied (+1) or free (-1)
         # 'self.gameboard.cur_tile_type' identifier of the current tile that should be placed on the game board (integer between 0 and len(self.gameboard.tiles))
-        sequence = (np.reshape(self.gameboard.board, -1)).copy()
-        sequence[sequence == -1] = 0
-        board_encoding = int(np.packbits(sequence.astype(bool), bitorder='big').sum())
-        class_encoding = int(self.gameboard.cur_tile_type << 16)
-        encoding = board_encoding + class_encoding
-        self.curr_state = encoding
+        board_state = self.gameboard.board
+        # board_state[board_state == -1] = 0
+        class_state = self.gameboard.cur_tile_type
+        self.curr_state = encode_state(board_state, class_state)
 
 
     def fn_select_action(self):
@@ -103,17 +111,12 @@ class TQAgent:
         # You can use this function to map out which actions are valid or not
 
         # epsilon-greedy
-        actions = np.arange(self.max_num_actions)
         legal_mask = self.legal_masks[self.gameboard.cur_tile_type]
-        legal_actions = actions[legal_mask]
-        # print(legal_actions)
+        legal_actions = np.arange(self.max_num_actions)[legal_mask]
         if np.random.rand() < self.epsilon:
             self.curr_action = np.random.choice(legal_actions)
         else:
-            options = self.q_table[self.curr_state][legal_mask]
-            # print(self.q_table[self.curr_state])
-            # self.curr_action = legal_actions[np.random.choice(np.argwhere(options == np.amax(options)).flatten())]
-            self.curr_action = legal_actions[np.argmax(options)]
+            self.curr_action = legal_actions[np.argmax(self.q_table[self.curr_state][legal_mask])]
 
         # Decode action
         bits = format(self.curr_action, '04b')

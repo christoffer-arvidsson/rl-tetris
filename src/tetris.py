@@ -4,6 +4,7 @@ import h5py
 import gameboardClass
 import agentClass
 
+PARAM_TASK1test=0
 PARAM_TASK1a=1
 PARAM_TASK1b=2
 PARAM_TASK1c=3
@@ -15,6 +16,7 @@ PARAM_TASK2b=6
 human_player=0
 
 # Choose parameter sets for different tasks
+# param_set=PARAM_TASK1test
 # param_set=PARAM_TASK1a
 # param_set=PARAM_TASK1b
 param_set=PARAM_TASK1c
@@ -24,7 +26,10 @@ param_set=PARAM_TASK1c
 
 # Use files to evaluate strategy
 # If you change 'strategy_file' to the location of a file containing a stored Q-table or Q-network, you can evaluate the success of the found strategy
-if param_set==PARAM_TASK1a:
+if param_set==PARAM_TASK1test:
+    strategy_file=''
+    # strategy_file='log/task1a_1000_q.npy'
+elif param_set==PARAM_TASK1a:
     strategy_file=''
     # strategy_file='log/task1a_1000_q.npy'
 elif param_set==PARAM_TASK1b:
@@ -64,7 +69,23 @@ else:
 # 'replay_buffer_size' is the size of the experience replay buffer
 # 'batch_size' is the number of samples taken from the experience replay buffer each update
 # 'sync_target_episode_count' is the number of epsiodes between synchronisations of the target network
-if param_set==PARAM_TASK1a:
+if param_set==PARAM_TASK1test:
+    name = 'task1a'
+    N_row=4
+    N_col=4
+    tile_size=2
+    # max_tile_count=50
+    max_tile_count=50
+    stochastic_prob=0
+
+    alpha=0.2
+    epsilon=0
+    episode_count=10
+    # episode_count=3
+
+    if (not human_player) or evaluate_agent:
+        agent=agentClass.TQAgent(alpha,epsilon,episode_count)
+elif param_set==PARAM_TASK1a:
     name = 'task1a'
     N_row=4
     N_col=4
@@ -103,7 +124,7 @@ elif param_set==PARAM_TASK1c:
     stochastic_prob=1
 
     alpha=0.2
-    epsilon=0.01
+    epsilon=0.001
     episode_count=200000
 
     if (not human_player) or evaluate_agent:
