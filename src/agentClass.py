@@ -18,6 +18,13 @@ def encode_state(board_state, class_state):
     class_id = class_state << 16
     return board_id + class_id
 
+def decode_action(action):
+    bits = format(action, '04b')
+    loc = 2 * int(bits[0]) + int(bits[1])
+    rot = 2 * int(bits[2]) + int(bits[3])
+    return (loc, rot)
+
+
 class TQAgent:
     # Agent for learning to play tetris using Q-learning
     def __init__(self,alpha,epsilon,episode_count):
@@ -33,10 +40,7 @@ class TQAgent:
             for t in range(len(self.gameboard.tiles)):
                 self.gameboard.cur_tile_type = t
                 for act in range(self.max_num_actions):
-                    bits = format(act, '04b')
-                    loc = 2 * int(bits[0]) + int(bits[1])
-                    rot = 2 * int(bits[2]) + int(bits[3])
-
+                    loc, rot = decode_action(act)
                     is_valid = not self.gameboard.fn_move(loc, rot)
                     legal_masks[t, act] = is_valid
 
@@ -115,12 +119,13 @@ class TQAgent:
         if np.random.rand() < self.epsilon:
             self.curr_action = np.random.choice(legal_actions)
         else:
-            self.curr_action = legal_actions[np.argmax(self.q_table[self.curr_state][legal_mask])]
+            options = self.q_table[self.curr_state][legal_mask]
+            winner = np.random.choice(np.argwhere(options == np.amax(options)).flatten())
+            self.curr_action = legal_actions[winner]
+            # self.curr_action = legal_actions[np.argmax(self.q_table[self.curr_state][legal_mask])]
 
         # Decode action
-        bits = format(self.curr_action, '04b')
-        loc = 2 * int(bits[0]) + int(bits[1])
-        rot = 2 * int(bits[2]) + int(bits[3])
+        loc, rot = decode_action(self.curr_action)
         self.gameboard.fn_move(loc, rot)
 
 
@@ -214,17 +219,17 @@ class TDQNAgent:
 
     def fn_load_strategy(self,strategy_file):
         pass
-        # TO BE COMPLETED BY STUDENT
-        # Here you can load the Q-network (to Q-network of self) from the strategy_file
+    # TO BE COMPLETED BY STUDENT
+    # Here you can load the Q-network (to Q-network of self) from the strategy_file
 
     def fn_read_state(self):
         pass
-        # TO BE COMPLETED BY STUDENT
-        # This function should be written by you
-        # Instructions:
-        # In this function you could calculate the current state of the gane board
-        # You can for example represent the state as a copy of the game board and the identifier of the current tile
-        # This function should not return a value, store the state as an attribute of self
+    # TO BE COMPLETED BY STUDENT
+    # This function should be written by you
+    # Instructions:
+    # In this function you could calculate the current state of the gane board
+    # You can for example represent the state as a copy of the game board and the identifier of the current tile
+    # This function should not return a value, store the state as an attribute of self
 
         # Useful variables: 
         # 'self.gameboard.N_row' number of rows in gameboard
@@ -234,11 +239,11 @@ class TDQNAgent:
 
     def fn_select_action(self):
         pass
-        # TO BE COMPLETED BY STUDENT
-        # This function should be written by you
-        # Instructions:
-        # Choose and execute an action, based on the output of the Q-network for the current state, or random if epsilon greedy
-        # This function should not return a value, store the action as an attribute of self and exectute the action by moving the tile to the desired position and orientation
+    # TO BE COMPLETED BY STUDENT
+    # This function should be written by you
+    # Instructions:
+    # Choose and execute an action, based on the output of the Q-network for the current state, or random if epsilon greedy
+    # This function should not return a value, store the action as an attribute of self and exectute the action by moving the tile to the desired position and orientation
 
         # Useful variables: 
         # 'self.epsilon' parameter epsilon in epsilon-greedy policy
@@ -253,13 +258,13 @@ class TDQNAgent:
 
     def fn_reinforce(self,batch):
         pass
-        # TO BE COMPLETED BY STUDENT
-        # This function should be written by you
-        # Instructions:
-        # Update the Q network using a batch of quadruplets (old state, last action, last reward, new state)
-        # Calculate the loss function by first, for each old state, use the Q-network to calculate the values Q(s_old,a), i.e. the estimate of the future reward for all actions a
-        # Then repeat for the target network to calculate the value \hat Q(s_new,a) of the new state (use \hat Q=0 if the new state is terminal)
-        # This function should not return a value, the Q table is stored as an attribute of self
+    # TO BE COMPLETED BY STUDENT
+    # This function should be written by you
+    # Instructions:
+    # Update the Q network using a batch of quadruplets (old state, last action, last reward, new state)
+    # Calculate the loss function by first, for each old state, use the Q-network to calculate the values Q(s_old,a), i.e. the estimate of the future reward for all actions a
+    # Then repeat for the target network to calculate the value \hat Q(s_new,a) of the new state (use \hat Q=0 if the new state is terminal)
+    # This function should not return a value, the Q table is stored as an attribute of self
 
         # Useful variables: 
         # The input argument 'batch' contains a sample of quadruplets used to update the Q-network
@@ -273,8 +278,8 @@ class TDQNAgent:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
                 if self.episode in saveEpisodes:
                     pass
-                    # TO BE COMPLETED BY STUDENT
-                    # Here you can save the rewards and the Q-network to data files
+                # TO BE COMPLETED BY STUDENT
+                # Here you can save the rewards and the Q-network to data files
             if self.episode>=self.episode_count:
                 raise SystemExit(0)
             else:
@@ -304,8 +309,8 @@ class TDQNAgent:
 
                 if self.episode_count % self.sync_target_episode_count == 0:
                     pass
-                    # TO BE COMPLETED BY STUDENT
-                    # Here you should write line(s) to copy the current network to the target network
+                # TO BE COMPLETED BY STUDENT
+                # Here you should write line(s) to copy the current network to the target network
 
 class THumanAgent:
     def fn_init(self,gameboard,name='human'):

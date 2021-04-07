@@ -37,7 +37,7 @@ elif param_set==PARAM_TASK1b:
     # strategy_file='log/task1b_10000_q.npy'
 elif param_set==PARAM_TASK1c:
     strategy_file=''
-    # strategy_file='log/task1c_100000_q.npy'
+    # strategy_file='log/task1c_200000_q.npy'
 elif param_set==PARAM_TASK1d:
     strategy_file=''
 elif param_set==PARAM_TASK2a:
@@ -70,7 +70,7 @@ else:
 # 'batch_size' is the number of samples taken from the experience replay buffer each update
 # 'sync_target_episode_count' is the number of epsiodes between synchronisations of the target network
 if param_set==PARAM_TASK1test:
-    name = 'task1a'
+    name = 'test'
     N_row=4
     N_col=4
     tile_size=2
@@ -192,7 +192,7 @@ if evaluate_agent:
     agent_evaluate=agent;
 if human_player:
     agent=agentClass.THumanAgent()
-        
+
 gameboard=gameboardClass.TGameBoard(N_row,N_col,tile_size,max_tile_count,agent,stochastic_prob, name)
 
 if evaluate_agent:
@@ -236,7 +236,7 @@ if isinstance(gameboard.agent,agentClass.THumanAgent):
                         framerate-=1
                     if event.key==pygame.K_RIGHT:
                         framerate+=1
-            gameboard.agent.fn_turn()
+                        gameboard.agent.fn_turn()
 
         if evaluate_agent:
             agent_evaluate.fn_read_state()
@@ -262,7 +262,7 @@ if isinstance(gameboard.agent,agentClass.THumanAgent):
             screen.blit(font.render("Tile "+str(gameboard.tile_count)+"/"+str(gameboard.max_tile_count),True,COLOR_BLACK),[0,20])
             if framerate>0:
                 screen.blit(font.render("FPS: "+str(framerate),True,COLOR_BLACK),[320,0])
-            screen.blit(font.render("Reward: "+str(agent.reward_tots[agent.episode]),True,COLOR_BLACK),[0,0])
+                screen.blit(font.render("Reward: "+str(agent.reward_tots[agent.episode]),True,COLOR_BLACK),[0,0])
             if gameboard.gameover:
                 screen.blit(fontLarge.render("Game Over", True,COLOR_RED), [80, 200])
                 screen.blit(font.render("Press ESC to try again", True,COLOR_RED), [85, 265])
