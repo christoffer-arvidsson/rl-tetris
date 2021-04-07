@@ -88,7 +88,6 @@ class TQAgent:
         # 'self.gameboard.board[index_row,index_col]' table indicating if row 'index_row' and column 'index_col' is occupied (+1) or free (-1)
         # 'self.gameboard.cur_tile_type' identifier of the current tile that should be placed on the game board (integer between 0 and len(self.gameboard.tiles))
         board_state = self.gameboard.board
-        # board_state[board_state == -1] = 0
         class_state = self.gameboard.cur_tile_type
         self.curr_state = encode_state(board_state, class_state)
 

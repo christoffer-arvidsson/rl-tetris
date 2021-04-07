@@ -12,7 +12,7 @@ class TGameBoard:
         self.agent=agent;
         # Create table for game board, entries 1 means occupied, entries -1 means free
         # Use type float32 to simplify conversion to tensors in torch
-        self.board=np.empty((N_row,N_col),dtype=np.float32)
+        self.board=np.empty((N_row,N_col),dtype=bool)
         self.cur_tile_type=-1
         self.tile_x=-1
         self.tile_y=-1
@@ -93,7 +93,7 @@ class TGameBoard:
     def fn_restart(self):
         self.gameover=0
         self.tile_count=0
-        self.board.fill(-1)
+        self.board.fill(0)
         self.fn_new_tile()
 
     def fn_new_tile(self):
@@ -163,7 +163,7 @@ class TGameBoard:
                 lineCount+=1
                 for y1Loop in range(yLoop,self.N_row-1):
                     self.board[y1Loop,:]=self.board[y1Loop+1,:]
-                self.board[self.N_row-1,:]=-1
+                self.board[self.N_row-1,:]=0
         if lineCount>0:
             curReward=10**(lineCount-1)
         else:
