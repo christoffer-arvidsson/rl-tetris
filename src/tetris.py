@@ -19,9 +19,9 @@ human_player=0
 # param_set=PARAM_TASK1test
 # param_set=PARAM_TASK1a
 # param_set=PARAM_TASK1b
-param_set=PARAM_TASK1c
+# param_set=PARAM_TASK1c
 # param_set=PARAM_TASK1d
-# param_set=PARAM_TASK2a
+param_set=PARAM_TASK2a
 # param_set=PARAM_TASK2b
 
 # Use files to evaluate strategy
@@ -163,7 +163,7 @@ elif param_set==PARAM_TASK2a:
     if (not human_player) or evaluate_agent:
         agent=agentClass.TDQNAgent(alpha,epsilon,epsilon_scale,replay_buffer_size,batch_size,sync_target_episode_count,episode_count)
 elif param_set==PARAM_TASK2b:
-    name = param_task2b
+    name = 'task2b'
     N_row=8
     N_col=8
     tile_size=4

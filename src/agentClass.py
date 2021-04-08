@@ -8,6 +8,11 @@ from datetime import datetime
 from tensorboardX import SummaryWriter
 from functools import reduce
 
+from deepq import DQN
+import torch
+
+import random
+
 # This file provides the skeleton structure for the classes TQAgent and TDQNAgent to be completed by you, the student.
 # Locations starting with # TO BE COMPLETED BY STUDENT indicates missing code that should be written by you.
 #
@@ -23,7 +28,6 @@ def decode_action(action):
     loc = 2 * int(bits[0]) + int(bits[1])
     rot = 2 * int(bits[2]) + int(bits[3])
     return (loc, rot)
-
 
 class TQAgent:
     # Agent for learning to play tetris using Q-learning
@@ -185,6 +189,25 @@ class TQAgent:
             # Update the Q-table using the old state and the reward (the new state and the taken action should be stored as attributes in self)
             self.fn_reinforce(old_state,reward)
 
+class ReplayBuffer(object):
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.storage = []
+        self.current = 0
+
+    def __len__(self):
+        return len(self.storage)
+
+    def push(self, element):
+        if len(self.storage) < self.capacity:
+            self.storage.append(None)
+        self.storage[self.current] = element
+        self.current = (self.current + 1) % self.capacity
+
+    def sample(self, batch_size):
+        return random.sample(self.storage, batch_size)
+
+
 
 class TDQNAgent:
     # Agent for learning to play tetris using Q-learning
@@ -202,6 +225,7 @@ class TDQNAgent:
     def fn_init(self,gameboard,name=''):
         self.gameboard=gameboard
         self.experiment_name = name
+        self.writer = SummaryWriter("./log/" + self.experiment_name + '_' + datetime.now().strftime("%Y%m%d-%H%M%S"))
         # TO BE COMPLETED BY STUDENT
         # This function should be written by you
         # Instructions:
@@ -217,13 +241,25 @@ class TDQNAgent:
         # 'self.episode_count' the total number of episodes in the training
         # 'self.replay_buffer_size' the number of quadruplets stored in the experience replay buffer
 
+        self.reward_tots = np.zeros(self.episode_count)
+        self.max_num_actions = self.gameboard.N_col * 4
+        self.num_states = 2**(self.gameboard.N_row * self.gameboard.N_col + 2)
+
+        self.action_network = DQN(16, 4, 16, 64)
+        self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
+        self.target_network = DQN(16, 4, 16, 64)
+        self.target_network.load_state_dict(self.action_network.state_dict())
+        self.target_network.eval()
+
+        self.exp_buffer = ReplayBuffer(self.replay_buffer_size)
+
+
     def fn_load_strategy(self,strategy_file):
         pass
     # TO BE COMPLETED BY STUDENT
     # Here you can load the Q-network (to Q-network of self) from the strategy_file
 
     def fn_read_state(self):
-        pass
     # TO BE COMPLETED BY STUDENT
     # This function should be written by you
     # Instructions:
@@ -236,9 +272,12 @@ class TDQNAgent:
         # 'self.gameboard.N_col' number of columns in gameboard
         # 'self.gameboard.board[index_row,index_col]' table indicating if row 'index_row' and column 'index_col' is occupied (+1) or free (-1)
         # 'self.gameboard.cur_tile_type' identifier of the current tile that should be placed on the game board (integer between 0 and len(self.gameboard.tiles))
+        board_state = self.gameboard.board.flatten()
+        class_state = np.zeros(4, dtype=bool)
+        class_state[self.gameboard.cur_tile_type] = 1
+        self.curr_state = np.concatenate([board_state, class_state]).astype(np.float32)
 
     def fn_select_action(self):
-        pass
     # TO BE COMPLETED BY STUDENT
     # This function should be written by you
     # Instructions:
@@ -256,8 +295,14 @@ class TDQNAgent:
         # The function returns 1 if the action is not valid and 0 otherwise
         # You can use this function to map out which actions are valid or not
 
+        if np.random.rand() < self.epsilon:
+            self.curr_action = np.random.choice(np.arange(self.max_num_actions))
+        else:
+            # Run network
+            qualities = self.action_network(torch.from_numpy(self.curr_state))
+            self.curr_action = torch.argmax(qualities)
+
     def fn_reinforce(self,batch):
-        pass
     # TO BE COMPLETED BY STUDENT
     # This function should be written by you
     # Instructions:
@@ -269,48 +314,78 @@ class TDQNAgent:
         # Useful variables: 
         # The input argument 'batch' contains a sample of quadruplets used to update the Q-network
 
+        # old_states = np.zeros((self.batch_size, 20), dtype=np.float32)
+        # targets = np.zeros(self.batch_size)
+
+        old_state_batch, action_batch, reward_batch, new_state_batch = tuple(map(torch.Tensor, zip(*batch)))
+        action_batch = action_batch.unsqueeze(1).long()
+        # print("old: ", old_state_batch)
+        # print("action: ", action_batch)
+        # print("reward: ", reward_batch)
+        # print("new: ", new_state_batch)
+
+        self.optimizer.zero_grad()
+        next_state_qualities = torch.zeros(self.batch_size)
+        targets = reward_batch + torch.max(self.target_network(new_state_batch), 1)[0]
+        outputs = self.action_network(old_state_batch).gather(1, action_batch)
+        # print(targets)
+        # print(outputs)
+
+        loss = (outputs - targets).pow(2).sum()
+        loss.backward()
+        self.optimizer.step()
+
+
     def fn_turn(self):
         if self.gameboard.gameover:
             self.episode+=1
             if self.episode%100==0:
                 print('episode '+str(self.episode)+'/'+str(self.episode_count)+' (reward: ',str(np.sum(self.reward_tots[range(self.episode-100,self.episode)])),')')
+                self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode-100:].sum(), self.episode)
             if self.episode%1000==0:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
                 if self.episode in saveEpisodes:
                     pass
                 # TO BE COMPLETED BY STUDENT
                 # Here you can save the rewards and the Q-network to data files
+
             if self.episode>=self.episode_count:
                 raise SystemExit(0)
             else:
+                if (len(self.exp_buffer) >= self.replay_buffer_size) and ((self.episode % self.sync_target_episode_count)==0):
+                # TO BE COMPLETED BY STUDENT
+                # Here you should write line(s) to copy the current network to the target network
+                    self.target_network.load_state_dict(self.action_network.state_dict())
+
                 self.gameboard.fn_restart()
         else:
             # Select and execute action (move the tile to the desired column and orientation)
             self.fn_select_action()
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to copy the old state into the variable 'old_state' which is later stored in the ecperience replay buffer
+            old_state = self.curr_state.copy()
 
             # Drop the tile on the game board
             reward=self.gameboard.fn_drop()
 
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to add the current reward to the total reward for the current episode, so you can save it to disk later
+            # self.
+            self.reward_tots[self.episode] += reward
 
             # Read the new state
             self.fn_read_state()
 
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to store the state in the experience replay buffer
+            entry = (old_state, self.curr_action, reward, self.curr_state)
+            self.exp_buffer.push(entry)
 
             if len(self.exp_buffer) >= self.replay_buffer_size:
                 # TO BE COMPLETED BY STUDENT
-                # Here you should write line(s) to create a variable 'batch' containing 'self.batch_size' quadruplets 
+                # Here you should write line(s) to create a variable 'batch' containing 'self.batch_size' quadruplets
+                batch = self.exp_buffer.sample(self.batch_size)
                 self.fn_reinforce(batch)
-
-                if self.episode_count % self.sync_target_episode_count == 0:
-                    pass
-                # TO BE COMPLETED BY STUDENT
-                # Here you should write line(s) to copy the current network to the target network
 
 class THumanAgent:
     def fn_init(self,gameboard,name='human'):
