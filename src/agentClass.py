@@ -156,9 +156,11 @@ class TQAgent:
 
     def fn_turn(self):
         if self.gameboard.gameover:
+            self.writer.add_scalar("q_learning_agent/reward", self.reward_tots[self.episode], self.episode)
             self.episode+=1
             if self.episode%100==0:
                 print('episode '+str(self.episode)+'/'+str(self.episode_count)+' (reward: ',str(np.sum(self.reward_tots[range(self.episode-100,self.episode)])),')')
+                self.writer.add_scalar("q_learning_agent/average", self.reward_tots[self.episode-100:].sum(), self.episode)
             if self.episode%1000==0:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
                 if self.episode in saveEpisodes:
@@ -353,10 +355,11 @@ class TDQNAgent:
 
     def fn_turn(self):
         if self.gameboard.gameover:
+            self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode], self.episode)
             self.episode+=1
-            self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode - 1], self.episode)
             if self.episode%100==0:
                 print('episode '+str(self.episode)+'/'+str(self.episode_count)+' (reward: ',str(np.sum(self.reward_tots[range(self.episode-100,self.episode)])),')')
+                self.writer.add_scalar("deepq_agent/average", self.reward_tots[self.episode-100:].sum(), self.episode)
             if self.episode%1000==0:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
                 if self.episode in saveEpisodes:
