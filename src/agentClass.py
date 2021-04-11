@@ -12,6 +12,7 @@ from deepq import DQN
 import torch
 
 import random
+from copy import deepcopy
 
 # This file provides the skeleton structure for the classes TQAgent and TDQNAgent to be completed by you, the student.
 # Locations starting with # TO BE COMPLETED BY STUDENT indicates missing code that should be written by you.
@@ -158,7 +159,6 @@ class TQAgent:
             self.episode+=1
             if self.episode%100==0:
                 print('episode '+str(self.episode)+'/'+str(self.episode_count)+' (reward: ',str(np.sum(self.reward_tots[range(self.episode-100,self.episode)])),')')
-                self.writer.add_scalar("agent/reward", self.reward_tots[self.episode-100:].sum(), self.episode)
             if self.episode%1000==0:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
                 if self.episode in saveEpisodes:
@@ -242,20 +242,21 @@ class TDQNAgent:
         # 'self.replay_buffer_size' the number of quadruplets stored in the experience replay buffer
 
         self.reward_tots = np.zeros(self.episode_count)
-        self.max_num_actions = self.gameboard.N_col * 4
-        self.num_states = 2**(self.gameboard.N_row * self.gameboard.N_col + 2)
+        self.max_num_actions = self.gameboard.N_col * len(self.gameboard.tiles)
+        self.chosen_action = False
 
-        self.action_network = DQN(16, 4, 16, 64)
+        self.action_network = DQN(16, 4, self.max_num_actions, 64)
         self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
-        self.target_network = DQN(16, 4, 16, 64)
-        self.target_network.load_state_dict(self.action_network.state_dict())
+        self.target_network = deepcopy(self.action_network)
         self.target_network.eval()
 
         self.exp_buffer = ReplayBuffer(self.replay_buffer_size)
 
-
     def fn_load_strategy(self,strategy_file):
-        pass
+        self.action_network.load_state_dict(torch.load(strategy_file))
+        self.target_network = deepcopy(self.action_network)
+        self.target_network.eval()
+
     # TO BE COMPLETED BY STUDENT
     # Here you can load the Q-network (to Q-network of self) from the strategy_file
 
@@ -272,9 +273,9 @@ class TDQNAgent:
         # 'self.gameboard.N_col' number of columns in gameboard
         # 'self.gameboard.board[index_row,index_col]' table indicating if row 'index_row' and column 'index_col' is occupied (+1) or free (-1)
         # 'self.gameboard.cur_tile_type' identifier of the current tile that should be placed on the game board (integer between 0 and len(self.gameboard.tiles))
-        board_state = self.gameboard.board.flatten()
-        class_state = np.zeros(4, dtype=bool)
-        class_state[self.gameboard.cur_tile_type] = 1
+        board_state = self.gameboard.board.copy().flatten()
+        class_state = np.zeros(len(self.gameboard.tiles), dtype=bool)
+        class_state[self.gameboard.cur_tile_type] = True
         self.curr_state = np.concatenate([board_state, class_state]).astype(np.float32)
 
     def fn_select_action(self):
@@ -295,12 +296,17 @@ class TDQNAgent:
         # The function returns 1 if the action is not valid and 0 otherwise
         # You can use this function to map out which actions are valid or not
 
-        if np.random.rand() < self.epsilon:
+        if np.random.rand() < max(self.epsilon, 1-self.episode / self.epsilon_scale) and not self.chosen_action:
             self.curr_action = np.random.choice(np.arange(self.max_num_actions))
+            self.chosen_action = True
         else:
             # Run network
             qualities = self.action_network(torch.from_numpy(self.curr_state))
             self.curr_action = torch.argmax(qualities)
+
+        # Apply action
+        loc, rot = decode_action(self.curr_action)
+        self.gameboard.fn_move(loc, rot)
 
     def fn_reinforce(self,batch):
     # TO BE COMPLETED BY STUDENT
@@ -317,37 +323,48 @@ class TDQNAgent:
         # old_states = np.zeros((self.batch_size, 20), dtype=np.float32)
         # targets = np.zeros(self.batch_size)
 
-        old_state_batch, action_batch, reward_batch, new_state_batch = tuple(map(torch.Tensor, zip(*batch)))
+        old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask = tuple(map(torch.Tensor, zip(*batch)))
         action_batch = action_batch.unsqueeze(1).long()
-        # print("old: ", old_state_batch)
-        # print("action: ", action_batch)
-        # print("reward: ", reward_batch)
-        # print("new: ", new_state_batch)
+        nonfinal_mask = nonfinal_mask > 0
+        # print(nonfinal_mask)
+        # print("old: ", old_state_batch.shape)
+        # print("action: ", action_batch.shape)
+        # print("reward: ", reward_batch.shape)
+        # print("new: ", new_state_batch.shape)
 
-        self.optimizer.zero_grad()
         next_state_qualities = torch.zeros(self.batch_size)
-        targets = reward_batch + torch.max(self.target_network(new_state_batch), 1)[0]
-        outputs = self.action_network(old_state_batch).gather(1, action_batch)
-        # print(targets)
+        target_quals, _ = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)
+        next_state_qualities[nonfinal_mask] = target_quals
+        targets = next_state_qualities + reward_batch
+        outputs = self.action_network(old_state_batch).gather(1, action_batch).flatten()
         # print(outputs)
+        # print(targets)
 
         loss = (outputs - targets).pow(2).sum()
+        # loss = torch.nn.functional.mse_loss(outputs, targets)
+        self.optimizer.zero_grad()
         loss.backward()
+
+        # for param in self.action_network.parameters():
+        #         param.grad.data.clamp_(-1, 1)
+
         self.optimizer.step()
 
 
     def fn_turn(self):
         if self.gameboard.gameover:
             self.episode+=1
+            self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode - 1], self.episode)
             if self.episode%100==0:
                 print('episode '+str(self.episode)+'/'+str(self.episode_count)+' (reward: ',str(np.sum(self.reward_tots[range(self.episode-100,self.episode)])),')')
-                self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode-100:].sum(), self.episode)
             if self.episode%1000==0:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
                 if self.episode in saveEpisodes:
-                    pass
                 # TO BE COMPLETED BY STUDENT
                 # Here you can save the rewards and the Q-network to data files
+                    torch.save(self.action_network.state_dict(), f'log/{self.experiment_name}_{self.episode}_q.pt')
+                    np.save(f'log/{self.experiment_name}_{self.episode}_rewards', self.reward_tots)
+
 
             if self.episode>=self.episode_count:
                 raise SystemExit(0)
@@ -366,7 +383,8 @@ class TDQNAgent:
             old_state = self.curr_state.copy()
 
             # Drop the tile on the game board
-            reward=self.gameboard.fn_drop()
+            reward = self.gameboard.fn_drop()
+            self.chosen_action = False
 
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to add the current reward to the total reward for the current episode, so you can save it to disk later
@@ -378,7 +396,9 @@ class TDQNAgent:
 
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to store the state in the experience replay buffer
-            entry = (old_state, self.curr_action, reward, self.curr_state)
+            next_state = self.curr_state.copy()
+            nonfinal_state = not self.gameboard.gameover
+            entry = (old_state.copy(), self.curr_action, reward, next_state, nonfinal_state)
             self.exp_buffer.push(entry)
 
             if len(self.exp_buffer) >= self.replay_buffer_size:

@@ -17,4 +17,4 @@ class DQN(torch.nn.Module):
         out = F.relu(self.dense(inputs))
         out = F.relu(self.hidden1(out))
         out = F.relu(self.hidden2(out))
-        return F.softmax(self.classifier(out))
+        return self.classifier(out)

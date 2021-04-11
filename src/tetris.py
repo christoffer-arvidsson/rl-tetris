@@ -42,6 +42,7 @@ elif param_set==PARAM_TASK1d:
     strategy_file=''
 elif param_set==PARAM_TASK2a:
     strategy_file=''
+    strategy_file='log/task2a_10000_q.pt'
 elif param_set==PARAM_TASK2b:
     strategy_file=''
 
@@ -162,6 +163,7 @@ elif param_set==PARAM_TASK2a:
 
     if (not human_player) or evaluate_agent:
         agent=agentClass.TDQNAgent(alpha,epsilon,epsilon_scale,replay_buffer_size,batch_size,sync_target_episode_count,episode_count)
+
 elif param_set==PARAM_TASK2b:
     name = 'task2b'
     N_row=8
