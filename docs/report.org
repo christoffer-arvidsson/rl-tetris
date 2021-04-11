@@ -3,35 +3,70 @@
 #+SETUPFILE: ~/Dropbox/org/org-roam/setup_file.org
 #+EXPORT_FILE_NAME: ./q-tetris
 
-* Shared
+* Deep-Q network
+#+caption: Deep-Q network model written in pytorch.
+#+include: "../src/deepq.py" src python
+* Results
 :PROPERTIES:
-:header-args: :session tetris-report :eval never-export :async yes :noweb yes
+:header-args: :exports results :session rl-report :results raw
 :END:
-** Hello
-
-** Appendix
-*** Task a
-#+begin_src jupyter-python :results silent
+#+begin_src jupyter-python :results silent :exports none
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import tensorboard as tb
+import tensorflow as tf
+from tensorflow.python.summary.summary_iterator import summary_iterator
 
 plt.close('all')
 plt.style.use('seaborn-deep')
-%matplotlib inline
+mpl.rcParams.update({
+    'text.usetex': True,
+    'pgf.rcfonts': False,
+    'lines.linewidth': 1,
+    'figure.dpi': 200,
+})
+%config inlinebackend.print_figure_kwargs={'facecolor' : "w"}
 #+end_src
 
-#+name: task-a
+#+name: code:reward-plots
 #+begin_src jupyter-python
-def moving_average(x, w):
-    return np.convolve(x, np.ones(w), 'same') / w
+def plot_rewards(ax, path, title):
+    data = np.load(path)
+    xs = np.arange(len(data))
+    ax.plot(xs, data, c='black', alpha=0.5, linewidth=0.3, label='Per episode')
 
-rewards = np.load('../src/log/10000_rewards.npy')
-episodes = np.arange(0, len(rewards))
-fig, ax = plt.subplots(1,1, facecolor='w')
-ax.plot(episodes, rewards, label='Reward')
-ax.plot(episodes, moving_average(rewards, 100), label='Rolling average')
+    N = 100
+    moving_average = np.convolve(data, np.ones(N)/N, mode='valid')
+    ax.plot(xs[:len(moving_average)], moving_average, c='C2',
+            label='Rolling average', linewidth=1.0)
+
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Reward')
+    ax.set_title(title)
+    ax.legend()
+    fig.tight_layout()
+
+paths = [
+    "../src/log/task1a_1000_rewards.npy",
+    "../src/log/task1b_10000_rewards.npy",
+    "../src/log/task1c_200000_rewards.npy",
+    "../src/log/task2a_10000_rewards.npy",
+]
+titles = [
+    '(1a)',
+    '(1b)',
+    '(1c)',
+    '(2a)',
+]
+
+fig, axes = plt.subplots(2,2, figsize=(10,7))
+
+for i, ax in enumerate(axes.reshape(-1)):
+    plot_rewards(ax, paths[i], titles[i])
 #+end_src
 
-#+RESULTS: task-a
-[[file:./.ob-jupyter/bcb20f9b42616ecfcb60d415450e290512e2bcca.png]]
+#+attr_latex: :width 1.0\textwidth
+#+caption: Total reward for the different parameter sets. Gray is the reward at each episode and red is the rolling average over 100 episodes.
+#+RESULTS: code:reward-plots
+[[file:./.ob-jupyter/3f2f18ece9050dcbcb2ef174567b9385597fb0d2.png]]
