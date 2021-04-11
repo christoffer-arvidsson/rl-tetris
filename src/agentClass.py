@@ -17,18 +17,28 @@ from copy import deepcopy
 # This file provides the skeleton structure for the classes TQAgent and TDQNAgent to be completed by you, the student.
 # Locations starting with # TO BE COMPLETED BY STUDENT indicates missing code that should be written by you.
 #
+def create_action_store(num_columns, num_rotations):
+    store = np.zeros((num_columns * num_rotations, 2), dtype=int)
+    for loc in range(num_columns):
+        for rot in range(num_rotations):
+            store[rot + loc * num_rotations, 0] = loc
+            store[rot + loc * num_rotations, 1] = rot
+
+    return store
+
 def encode_state(board_state, class_state):
-    binary_rep = np.power(2, np.arange(0,16), dtype=int)
+    binary_rep = np.power(2, np.arange(0,np.size(board_state)), dtype=int)
     board_id = (binary_rep * board_state.flatten()).sum(dtype=int)
     # board_id = reduce(lambda a,b: 2*a+b, board_state.flatten().astype(bool))
-    class_id = class_state << 16
+    class_id = class_state << np.size(board_state)
     return board_id + class_id
 
-def decode_action(action):
-    bits = format(action, '04b')
-    loc = 2 * int(bits[0]) + int(bits[1])
-    rot = 2 * int(bits[2]) + int(bits[3])
-    return (loc, rot)
+# def decode_action(action):
+#     """ Takes int, returns (column, rotation)."""
+#     bits = format(action, '04b')
+#     loc = 2 * int(bits[0]) + int(bits[1])
+#     rot = 2 * int(bits[2]) + int(bits[3])
+#     return (loc, rot)
 
 class TQAgent:
     # Agent for learning to play tetris using Q-learning
@@ -45,7 +55,7 @@ class TQAgent:
             for t in range(len(self.gameboard.tiles)):
                 self.gameboard.cur_tile_type = t
                 for act in range(self.max_num_actions):
-                    loc, rot = decode_action(act)
+                    loc, rot = self.action_store[act]
                     is_valid = not self.gameboard.fn_move(loc, rot)
                     legal_masks[t, act] = is_valid
 
@@ -68,13 +78,14 @@ class TQAgent:
 
         self.reward_tots = np.zeros(self.episode_count)
         self.max_num_actions = self.gameboard.N_col * 4
-        self.num_states = 2**(self.gameboard.N_row * self.gameboard.N_col + 2)
+        self.num_states = 2**(self.gameboard.N_row * self.gameboard.N_col + int(np.log2(self.max_num_actions)))
         self.q_table = np.zeros((self.num_states, self.max_num_actions), dtype=np.float32)
 
         # Initialize curr state
         # self.fn_read_state()
 
         # Legal move matrix (entry for each piece, masks every possible action)
+        self.action_store = create_action_store(self.gameboard.N_col, 4)
         self.legal_masks = compute_legal_masks(self)
 
     def fn_load_strategy(self,strategy_file):
@@ -130,9 +141,8 @@ class TQAgent:
             # self.curr_action = legal_actions[np.argmax(self.q_table[self.curr_state][legal_mask])]
 
         # Decode action
-        loc, rot = decode_action(self.curr_action)
+        loc, rot = self.action_store[self.curr_action]
         self.gameboard.fn_move(loc, rot)
-
 
     def fn_reinforce(self, old_state, reward):
         # TO BE COMPLETED BY STUDENT
@@ -244,15 +254,16 @@ class TDQNAgent:
         # 'self.replay_buffer_size' the number of quadruplets stored in the experience replay buffer
 
         self.reward_tots = np.zeros(self.episode_count)
-        self.max_num_actions = self.gameboard.N_col * len(self.gameboard.tiles)
+        self.max_num_actions = self.gameboard.N_col * 4
         self.chosen_action = False
 
-        self.action_network = DQN(16, 4, self.max_num_actions, 64)
+        self.action_network = DQN(np.size(self.gameboard.board), len(self.gameboard.tiles), self.max_num_actions, 64)
         self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
         self.target_network = deepcopy(self.action_network)
         self.target_network.eval()
 
         self.exp_buffer = ReplayBuffer(self.replay_buffer_size)
+        self.action_store = create_action_store(self.gameboard.N_col, 4)
 
     def fn_load_strategy(self,strategy_file):
         self.action_network.load_state_dict(torch.load(strategy_file))
@@ -307,7 +318,7 @@ class TDQNAgent:
             self.curr_action = torch.argmax(qualities)
 
         # Apply action
-        loc, rot = decode_action(self.curr_action)
+        loc, rot = self.action_store[self.curr_action]
         self.gameboard.fn_move(loc, rot)
 
     def fn_reinforce(self,batch):
@@ -328,19 +339,12 @@ class TDQNAgent:
         old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask = tuple(map(torch.Tensor, zip(*batch)))
         action_batch = action_batch.unsqueeze(1).long()
         nonfinal_mask = nonfinal_mask > 0
-        # print(nonfinal_mask)
-        # print("old: ", old_state_batch.shape)
-        # print("action: ", action_batch.shape)
-        # print("reward: ", reward_batch.shape)
-        # print("new: ", new_state_batch.shape)
 
         next_state_qualities = torch.zeros(self.batch_size)
         target_quals, _ = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)
         next_state_qualities[nonfinal_mask] = target_quals
         targets = next_state_qualities + reward_batch
         outputs = self.action_network(old_state_batch).gather(1, action_batch).flatten()
-        # print(outputs)
-        # print(targets)
 
         loss = (outputs - targets).pow(2).sum()
         # loss = torch.nn.functional.mse_loss(outputs, targets)
