@@ -16,6 +16,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import tensorboard as tb
 import tensorflow as tf
+from scipy.ndimage.filters import uniform_filter1d
 from tensorflow.python.summary.summary_iterator import summary_iterator
 
 plt.close('all')
@@ -37,7 +38,7 @@ def plot_rewards(ax, path, title):
     ax.plot(xs, data, c='black', alpha=0.5, linewidth=0.3, label='Per episode')
 
     N = 100
-    moving_average = np.convolve(data, np.ones(N)/N, mode='valid')
+    moving_average = uniform_filter1d(data, size=N)
     ax.plot(xs[:len(moving_average)], moving_average, c='C2',
             label='Rolling average', linewidth=1.0)
 
@@ -69,4 +70,7 @@ for i, ax in enumerate(axes.reshape(-1)):
 #+attr_latex: :width 1.0\textwidth
 #+caption: Total reward for the different parameter sets. Gray is the reward at each episode and red is the rolling average over 100 episodes.
 #+RESULTS: code:reward-plots
-[[file:./.ob-jupyter/3f2f18ece9050dcbcb2ef174567b9385597fb0d2.png]]
+: [ -98. -100. -100. -100. -100.  -98.  -98.  -98.  -98.  -97.]
+: [-100.  -99. -100. -100. -100. -100. -100.  -99. -100.  -98.]
+: [-100. -100. -100. -100. -100. -100. -100. -100. -100. -100.]
+: [-100. -100. -100. -100. -100. -100. -100. -100. -100.  -99.]
