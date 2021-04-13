@@ -12,7 +12,7 @@ from deepq import DQN
 import torch
 
 import random
-from copy import deepcopy
+from copy import deepcopy, copy
 
 # This file provides the skeleton structure for the classes TQAgent and TDQNAgent to be completed by you, the student.
 # Locations starting with # TO BE COMPLETED BY STUDENT indicates missing code that should be written by you.
@@ -257,7 +257,7 @@ class TDQNAgent:
         self.max_num_actions = self.gameboard.N_col * 4
         self.chosen_action = False
 
-        self.action_network = DQN(np.size(self.gameboard.board), len(self.gameboard.tiles), self.max_num_actions, 64)
+        self.action_network = DQN(self.gameboard.N_col, self.gameboard.N_row, len(self.gameboard.tiles), self.max_num_actions, 256)
         self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
         self.target_network = deepcopy(self.action_network)
         self.target_network.eval()
@@ -286,10 +286,11 @@ class TDQNAgent:
         # 'self.gameboard.N_col' number of columns in gameboard
         # 'self.gameboard.board[index_row,index_col]' table indicating if row 'index_row' and column 'index_col' is occupied (+1) or free (-1)
         # 'self.gameboard.cur_tile_type' identifier of the current tile that should be placed on the game board (integer between 0 and len(self.gameboard.tiles))
-        board_state = self.gameboard.board.copy().flatten()
-        class_state = np.zeros(len(self.gameboard.tiles), dtype=bool)
-        class_state[self.gameboard.cur_tile_type] = True
-        self.curr_state = np.concatenate([board_state, class_state]).astype(np.float32)
+        board_state = self.gameboard.board.copy().astype(np.float32)
+        board_tensor = torch.from_numpy(board_state).unsqueeze(0) # Add channel dimension
+        class_state = torch.zeros(len(self.gameboard.tiles), dtype=torch.float32)
+        class_state[self.gameboard.cur_tile_type] = 1.0
+        self.curr_state = (board_tensor, class_state)
 
     def fn_select_action(self):
     # TO BE COMPLETED BY STUDENT
@@ -314,8 +315,9 @@ class TDQNAgent:
             self.chosen_action = True
         else:
             # Run network
-            qualities = self.action_network(torch.from_numpy(self.curr_state))
-            self.curr_action = torch.argmax(qualities)
+            batched = tuple(map(lambda x: x.unsqueeze(0), self.curr_state))
+            qualities = self.action_network(batched)
+            self.curr_action = torch.argmax(qualities.squeeze())
 
         # Apply action
         loc, rot = self.action_store[self.curr_action]
@@ -336,12 +338,16 @@ class TDQNAgent:
         # old_states = np.zeros((self.batch_size, 20), dtype=np.float32)
         # targets = np.zeros(self.batch_size)
 
-        old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask = tuple(map(torch.Tensor, zip(*batch)))
-        action_batch = action_batch.unsqueeze(1).long()
-        nonfinal_mask = nonfinal_mask > 0
+        old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask = tuple(zip(*batch))
+        action_batch = torch.tensor(action_batch).unsqueeze(1).long()
+        nonfinal_mask = torch.tensor(nonfinal_mask, dtype=torch.bool)
+        reward_batch = torch.tensor(reward_batch)
+        old_state_batch = tuple(map(torch.stack, tuple(zip(*old_state_batch))))
+        new_state_batch = tuple(map(torch.stack, tuple(zip(*new_state_batch))))
 
+        masked_new_state = (new_state_batch[0][nonfinal_mask], new_state_batch[1][nonfinal_mask])
+        target_quals, _ = torch.max(self.target_network(masked_new_state), dim=1)
         next_state_qualities = torch.zeros(self.batch_size)
-        target_quals, _ = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)
         next_state_qualities[nonfinal_mask] = target_quals
         targets = next_state_qualities + reward_batch
         outputs = self.action_network(old_state_batch).gather(1, action_batch).flatten()
@@ -387,7 +393,7 @@ class TDQNAgent:
             self.fn_select_action()
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to copy the old state into the variable 'old_state' which is later stored in the ecperience replay buffer
-            old_state = self.curr_state.copy()
+            old_state = copy(self.curr_state)
 
             # Drop the tile on the game board
             reward = self.gameboard.fn_drop()
@@ -403,9 +409,9 @@ class TDQNAgent:
 
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to store the state in the experience replay buffer
-            next_state = self.curr_state.copy()
+            next_state = copy(self.curr_state)
             nonfinal_state = not self.gameboard.gameover
-            entry = (old_state.copy(), self.curr_action, reward, next_state, nonfinal_state)
+            entry = (old_state, self.curr_action, reward, next_state, nonfinal_state)
             self.exp_buffer.push(entry)
 
             if len(self.exp_buffer) >= self.replay_buffer_size:
