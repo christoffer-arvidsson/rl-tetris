@@ -8,11 +8,11 @@ from datetime import datetime
 from tensorboardX import SummaryWriter
 from functools import reduce
 
-from deepq import DQN, StateAutoEncoder
+from deepq import DQN
 import torch
 
 import random
-from copy import deepcopy, copy
+from copy import deepcopy
 
 # This file provides the skeleton structure for the classes TQAgent and TDQNAgent to be completed by you, the student.
 # Locations starting with # TO BE COMPLETED BY STUDENT indicates missing code that should be written by you.
@@ -253,20 +253,14 @@ class TDQNAgent:
         # 'self.episode_count' the total number of episodes in the training
         # 'self.replay_buffer_size' the number of quadruplets stored in the experience replay buffer
 
-        self.step = 0
         self.reward_tots = np.zeros(self.episode_count)
         self.max_num_actions = self.gameboard.N_col * 4
         self.chosen_action = False
 
-        self.action_network = DQN(16, len(self.gameboard.tiles), self.max_num_actions, 64)
-        self.action_optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
-
+        self.action_network = DQN(np.size(self.gameboard.board), len(self.gameboard.tiles), self.max_num_actions, 64)
+        self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
         self.target_network = deepcopy(self.action_network)
         self.target_network.eval()
-
-        self.state_encoder = StateAutoEncoder(self.gameboard.N_col, self.gameboard.N_row)
-        self.state_optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
-        print(self.state_encoder)
 
         self.exp_buffer = ReplayBuffer(self.replay_buffer_size)
         self.action_store = create_action_store(self.gameboard.N_col, 4)
@@ -292,24 +286,10 @@ class TDQNAgent:
         # 'self.gameboard.N_col' number of columns in gameboard
         # 'self.gameboard.board[index_row,index_col]' table indicating if row 'index_row' and column 'index_col' is occupied (+1) or free (-1)
         # 'self.gameboard.cur_tile_type' identifier of the current tile that should be placed on the game board (integer between 0 and len(self.gameboard.tiles))
-        self.state_optimizer.zero_grad()
-        board_state = self.gameboard.board.copy().astype(np.float32)
-        board_tensor = torch.from_numpy(board_state).unsqueeze(0).unsqueeze(0)
-        board_encoding = self.state_encoder.encode(board_tensor)
-        reconstructed = self.state_encoder.decode(board_encoding)
-
-        loss = torch.nn.MSELoss()
-        l = loss(reconstructed, board_tensor)
-
-        self.writer.add_scalar("deepq_agent/auto_loss", l.item(), self.step)
-        # print(loss)
-
-        l.backward()
-        self.state_optimizer.step()
-
-        class_state = torch.zeros((len(self.gameboard.tiles)), dtype=torch.float32)
-        class_state[self.gameboard.cur_tile_type] = 1.0
-        self.curr_state = torch.cat((board_encoding.squeeze(), class_state))
+        board_state = self.gameboard.board.copy().flatten()
+        class_state = np.zeros(len(self.gameboard.tiles), dtype=bool)
+        class_state[self.gameboard.cur_tile_type] = True
+        self.curr_state = np.concatenate([board_state, class_state]).astype(np.float32)
 
     def fn_select_action(self):
     # TO BE COMPLETED BY STUDENT
@@ -334,7 +314,7 @@ class TDQNAgent:
             self.chosen_action = True
         else:
             # Run network
-            qualities = self.action_network(self.curr_state)
+            qualities = self.action_network(torch.from_numpy(self.curr_state))
             self.curr_action = torch.argmax(qualities)
 
         # Apply action
@@ -356,41 +336,33 @@ class TDQNAgent:
         # old_states = np.zeros((self.batch_size, 20), dtype=np.float32)
         # targets = np.zeros(self.batch_size)
 
-        old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask = tuple(zip(*batch))
-        action_batch = torch.tensor(action_batch).long()
-        nonfinal_mask = torch.tensor(nonfinal_mask, dtype=torch.bool)
-        old_state_batch = torch.stack(old_state_batch)
-        new_state_batch = torch.stack(new_state_batch)
-        reward_batch = torch.tensor(reward_batch)
-        # action_batch = torch.tensor(action_batch, dtype=torch.int).unsqueeze(1).long()
-        # nonfinal_mask = torch.tensor(nonfinal_mask, dtype=torch.bool)
-        # print(nonfinal_mask)
-        # reward_batch = torch.tensor(reward_batch, dtype=torch.float32)
+        old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask = tuple(map(torch.Tensor, zip(*batch)))
+        action_batch = action_batch.unsqueeze(1).long()
+        nonfinal_mask = nonfinal_mask > 0
 
         next_state_qualities = torch.zeros(self.batch_size)
         target_quals, _ = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)
         next_state_qualities[nonfinal_mask] = target_quals
         targets = next_state_qualities + reward_batch
-        # print(old_state_batch.shape)
-        # print(targets.shape)
-        # print(action_batch.shape)
-        outputs = self.action_network(old_state_batch).gather(1, action_batch.unsqueeze(1)).flatten()
-        # print(outputs.shape)
-        # print(outputs.shape)
-        # print(targets.shape)
-        # crash
+        outputs = self.action_network(old_state_batch).gather(1, action_batch).flatten()
 
         loss = (outputs - targets).pow(2).sum()
-        self.action_optimizer.zero_grad()
+        # loss = torch.nn.functional.mse_loss(outputs, targets)
+        self.optimizer.zero_grad()
         loss.backward()
-        self.action_optimizer.step()
+
+        # for param in self.action_network.parameters():
+        #         param.grad.data.clamp_(-1, 1)
+
+        self.optimizer.step()
+
 
     def fn_turn(self):
         if self.gameboard.gameover:
             self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode], self.episode)
             self.episode+=1
             if self.episode%100==0:
-                print(f'episode {self.episode}/{self.episode_count} reward: {np.sum(self.reward_tots[self.episode-100:])})')
+                print('episode '+str(self.episode)+'/'+str(self.episode_count)+' (reward: ',str(np.sum(self.reward_tots[range(self.episode-100,self.episode)])),')')
                 self.writer.add_scalar("deepq_agent/average", self.reward_tots[self.episode-100:].sum(), self.episode)
             if self.episode%1000==0:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
@@ -415,11 +387,10 @@ class TDQNAgent:
             self.fn_select_action()
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to copy the old state into the variable 'old_state' which is later stored in the ecperience replay buffer
-            old_state = copy(self.curr_state)
+            old_state = self.curr_state.copy()
 
             # Drop the tile on the game board
             reward = self.gameboard.fn_drop()
-            self.step += 1
             self.chosen_action = False
 
             # TO BE COMPLETED BY STUDENT
@@ -432,9 +403,9 @@ class TDQNAgent:
 
             # TO BE COMPLETED BY STUDENT
             # Here you should write line(s) to store the state in the experience replay buffer
-            next_state = copy(self.curr_state)
+            next_state = self.curr_state.copy()
             nonfinal_state = not self.gameboard.gameover
-            entry = (copy(old_state), self.curr_action, reward, copy(next_state), nonfinal_state)
+            entry = (old_state.copy(), self.curr_action, reward, next_state, nonfinal_state)
             self.exp_buffer.push(entry)
 
             if len(self.exp_buffer) >= self.replay_buffer_size:
