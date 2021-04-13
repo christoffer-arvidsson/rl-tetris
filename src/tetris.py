@@ -16,12 +16,12 @@ PARAM_TASK2b=6
 human_player=0
 
 # Choose parameter sets for different tasks
-# param_set=PARAM_TASK1test
+param_set=PARAM_TASK1test
 # param_set=PARAM_TASK1a
 # param_set=PARAM_TASK1b
 # param_set=PARAM_TASK1c
 # param_set=PARAM_TASK1d
-param_set=PARAM_TASK2a
+# param_set=PARAM_TASK2a
 # param_set=PARAM_TASK2b
 
 # Use files to evaluate strategy
@@ -72,20 +72,25 @@ else:
 # 'sync_target_episode_count' is the number of epsiodes between synchronisations of the target network
 if param_set==PARAM_TASK1test:
     name = 'test'
-    N_row=4
-    N_col=4
-    tile_size=2
-    # max_tile_count=50
+    N_row=8
+    N_col=8
+    tile_size=4
     max_tile_count=50
     stochastic_prob=0
 
-    alpha=0.2
-    epsilon=0
-    episode_count=10
-    # episode_count=3
+    alpha=0.001
+    epsilon=0.01
+    episode_count=100000
+
+    epsilon_scale=50000
+
+    replay_buffer_size=10000
+    batch_size=32
+    sync_target_episode_count=100
 
     if (not human_player) or evaluate_agent:
-        agent=agentClass.TQAgent(alpha,epsilon,episode_count)
+        agent=agentClass.TDQNAgent(alpha,epsilon,epsilon_scale,replay_buffer_size,batch_size,sync_target_episode_count,episode_count)
+
 elif param_set==PARAM_TASK1a:
     name = 'task1a'
     N_row=4
