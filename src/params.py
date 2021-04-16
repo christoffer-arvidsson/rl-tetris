@@ -16,6 +16,25 @@
 # 'batch_size' is the number of samples taken from the experience replay buffer each update
 # 'sync_target_episode_count' is the number of epsiodes between synchronisations of the target network
 #
+param_debug = {
+    'name':  'debug',
+    'strategy_file': '',
+    'human_player': False,
+    'evaluate_agent': False,
+    'N_row': 8,
+    'N_col': 8,
+    'tile_size': 4,
+    'max_tile_count': 50,
+    'stochastic_prob': 1,
+    'alpha': 0.1,
+    'epsilon': 1.0, #initially
+    'episode_count': 10000,
+    'epsilon_scale': 50000,
+    'replay_buffer_size': 10000,
+    'batch_size': 512,
+    'sync_target_episode_count': 100,
+    'use_deepq':  True,
+}
 param_task1a = {
     'name': 'task1a',
     'strategy_file': '',
@@ -93,7 +112,8 @@ param_task2a =  {
     'episode_count': 10000,
     'epsilon_scale': 5000,
     'replay_buffer_size': 10000,
-    'batch_size': 32,
+    # 'batch_size': 32,
+    'batch_size': 512,
     'sync_target_episode_count': 100,
     'use_deepq':  True,
 }
@@ -107,17 +127,20 @@ param_task2b =  {
     'tile_size': 4,
     'max_tile_count': 50,
     'stochastic_prob': 1,
-    'alpha': 0.001,
-    'epsilon': 0.001,
-    'episode_count': 10000,
+    # 'alpha': 0.001,
+    # 'epsilon': 0.001,
+    'alpha': 0.01,
+    'epsilon': 0.01,
+    'episode_count': 100000,
     'epsilon_scale': 50000,
     'replay_buffer_size': 10000,
-    'batch_size': 32,
+    'batch_size': 512,
     'sync_target_episode_count': 100,
     'use_deepq':  True,
 }
 
 param_dict = {
+    'debug': param_debug,
     '1a': param_task1a,
     '1b': param_task1b,
     '1c': param_task1c,

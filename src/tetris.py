@@ -6,12 +6,16 @@ import gameboardClass
 import agentClass
 from params import param_dict
 
-# Command line args
+# Command line args, currently reads first argument as parameter set string
 if len(sys.argv):
-    param_set = param_dict[sys.argv[1]]
-    strategy_file = param_set['strategy_file']
-    human_player = param_set['human_player']
-    evaluate_agent = param_set['evaluate_agent']
+    if sys.argv[1] not in param_dict:
+        print("Invalid parameter set, exiting.")
+        exit()
+    else:
+        param_set = param_dict[sys.argv[1]]
+        strategy_file = param_set['strategy_file']
+        human_player = param_set['human_player']
+        evaluate_agent = param_set['evaluate_agent']
 
     if strategy_file:
         human_player = True
@@ -121,7 +125,5 @@ else:
     # The player is AI
     while True:
         gameboard.agent.fn_turn()
-
-
 
 
