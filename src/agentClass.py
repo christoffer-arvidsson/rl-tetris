@@ -33,13 +33,6 @@ def encode_state(board_state, class_state):
     class_id = class_state << np.size(board_state)
     return board_id + class_id
 
-# def decode_action(action):
-#     """ Takes int, returns (column, rotation)."""
-#     bits = format(action, '04b')
-#     loc = 2 * int(bits[0]) + int(bits[1])
-#     rot = 2 * int(bits[2]) + int(bits[3])
-#     return (loc, rot)
-
 class TQAgent:
     # Agent for learning to play tetris using Q-learning
     def __init__(self,alpha,epsilon,episode_count):

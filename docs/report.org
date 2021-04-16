@@ -6,9 +6,16 @@
 * Deep-Q network
 #+caption: Deep-Q network model written in pytorch.
 #+include: "../src/deepq.py" src python
+
 * Results
+#+attr_latex: :width 1.0\textwidth
+#+caption: Total reward for the different parameter sets. Gray is the reward at each episode and red is the rolling average over 100 episodes.
+#+RESULTS: code:reward-plots
+[[file:img/reward_plots.png]]
+
+* Code :noexport:
 :PROPERTIES:
-:header-args: :exports results :session rl-report :results raw
+:header-args: :exports results :session rl-report :results raw :async no
 :END:
 #+begin_src jupyter-python :results silent :exports none
 import numpy as np
@@ -31,7 +38,7 @@ mpl.rcParams.update({
 #+end_src
 
 #+name: code:reward-plots
-#+begin_src jupyter-python
+#+begin_src jupyter-python :file img/reward_plots.png
 def plot_rewards(ax, path, title):
     data = np.load(path)
     xs = np.arange(len(data))
@@ -67,10 +74,3 @@ for i, ax in enumerate(axes.reshape(-1)):
     plot_rewards(ax, paths[i], titles[i])
 #+end_src
 
-#+attr_latex: :width 1.0\textwidth
-#+caption: Total reward for the different parameter sets. Gray is the reward at each episode and red is the rolling average over 100 episodes.
-#+RESULTS: code:reward-plots
-: [ -98. -100. -100. -100. -100.  -98.  -98.  -98.  -98.  -97.]
-: [-100.  -99. -100. -100. -100. -100. -100.  -99. -100.  -98.]
-: [-100. -100. -100. -100. -100. -100. -100. -100. -100. -100.]
-: [-100. -100. -100. -100. -100. -100. -100. -100. -100.  -99.]
