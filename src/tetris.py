@@ -82,11 +82,11 @@ if param_set==PARAM_TASK1test:
     N_col=8
     tile_size=4
     max_tile_count=50
-    stochastic_prob=0
+    stochastic_prob=1
 
     alpha=0.001
-    epsilon=0.001
-    episode_count=10000
+    epsilon=0.01
+    episode_count=100000
 
     epsilon_scale=50000
 

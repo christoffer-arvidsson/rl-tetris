@@ -307,7 +307,8 @@ class TDQNAgent:
             self.chosen_action = True
         else:
             # Run network
-            qualities = self.action_network(torch.from_numpy(self.curr_state))
+            curr_state = torch.from_numpy(self.curr_state).unsqueeze(0) # Add batch dim
+            qualities = self.action_network(curr_state)
             self.curr_action = torch.argmax(qualities)
 
         # Apply action
