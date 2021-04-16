@@ -35,12 +35,12 @@ def encode_state(board_state, class_state):
 
 class TQAgent:
     # Agent for learning to play tetris using Q-learning
-    def __init__(self,alpha,epsilon,episode_count):
+    def __init__(self, params):
         # Initialize training parameters
-        self.alpha=alpha
-        self.epsilon=epsilon
+        self.alpha=params['alpha']
+        self.epsilon=params['epsilon']
         self.episode=0
-        self.episode_count=episode_count
+        self.episode_count=params['episode_count']
 
     def fn_init(self,gameboard, name=''):
         def compute_legal_masks(self):
@@ -216,16 +216,16 @@ class ReplayBuffer(object):
 
 class TDQNAgent:
     # Agent for learning to play tetris using Q-learning
-    def __init__(self,alpha,epsilon,epsilon_scale,replay_buffer_size,batch_size,sync_target_episode_count,episode_count):
+    def __init__(self, params):
         # Initialize training parameters
-        self.alpha=alpha
-        self.epsilon=epsilon
-        self.epsilon_scale=epsilon_scale
-        self.replay_buffer_size=replay_buffer_size
-        self.batch_size=batch_size
-        self.sync_target_episode_count=sync_target_episode_count
+        self.alpha=params['alpha']
+        self.epsilon=params['epsilon']
+        self.epsilon_scale=params['epsilon_scale']
+        self.replay_buffer_size=params['replay_buffer_size']
+        self.batch_size=params['batch_size']
+        self.sync_target_episode_count=params['sync_target_episode_count']
         self.episode=0
-        self.episode_count=episode_count
+        self.episode_count=params['episode_count']
 
     def fn_init(self,gameboard,name=''):
         self.gameboard=gameboard

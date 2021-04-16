@@ -20,14 +20,14 @@ class DQN(torch.nn.Module):
         self.classifier = Linear(n_hidden, n_actions)
 
     def forward(self, inputs):
-        board = inputs[:, :self.n_board_inputs]
-        tile = inputs[:, self.n_board_inputs:]
-        board = board.unsqueeze(-2) # Add channel dimension
-        board = self.board_conv1(board)
-        board = self.board_conv2(board)
-        board = self.flat_board(board)
+        # board = inputs[:, :self.n_board_inputs]
+        # tile = inputs[:, self.n_board_inputs:]
+        # board = board.unsqueeze(-2) # Add channel dimension
+        # board = self.board_conv1(board)
+        # board = self.board_conv2(board)
+        # board = self.flat_board(board)
 
-        inp = torch.cat((board, tile), 1)
+        # inp = torch.cat((board, tile), 1)
         # print(inp.shape)
         out = F.relu(self.dense(inputs))
         # print(out.shape)

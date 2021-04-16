@@ -4,208 +4,44 @@ import pygame
 import h5py
 import gameboardClass
 import agentClass
+from params import param_dict
 
-PARAM_TASK1test=0
-PARAM_TASK1a=1
-PARAM_TASK1b=2
-PARAM_TASK1c=3
-PARAM_TASK1d=4
-PARAM_TASK2a=5
-PARAM_TASK2b=6
-
+# Command line args
 if len(sys.argv):
-    param_set = int(sys.argv[1])
-    strategy_file=''
-    human_player=0
+    param_set = param_dict[sys.argv[1]]
+    strategy_file = param_set['strategy_file']
+    human_player = param_set['human_player']
+    evaluate_agent = param_set['evaluate_agent']
+
+    if strategy_file:
+        human_player = True
+        evaluate_agent = True
 else:
     # Choose to control the game yourself ('human_player=1') to test the setups in the different tasks
-    human_player=0
+    param_set=params['1a']
+    human_player=True
+    evaluate_agent = False
 
-    # Choose parameter sets for different tasks
-    # param_set=PARAM_TASK1test
-    # param_set=PARAM_TASK1a
-    # param_set=PARAM_TASK1b
-    # param_set=PARAM_TASK1c
-    # param_set=PARAM_TASK1d
-    # param_set=PARAM_TASK2a
-    # param_set=PARAM_TASK2b
-
-# Use files to evaluate strategy
-# If you change 'strategy_file' to the location of a file containing a stored Q-table or Q-network, you can evaluate the success of the found strategy
-if param_set==PARAM_TASK1test:
-    strategy_file=''
-    # strategy_file='log/task1a_1000_q.npy'
-elif param_set==PARAM_TASK1a:
-    strategy_file=''
-    # strategy_file='log/task1a_1000_q.npy'
-elif param_set==PARAM_TASK1b:
-    strategy_file=''
-    # strategy_file='log/task1b_10000_q.npy'
-elif param_set==PARAM_TASK1c:
-    strategy_file=''
-    # strategy_file='log/task1c_200000_q.npy'
-elif param_set==PARAM_TASK1d:
-    strategy_file=''
-elif param_set==PARAM_TASK2a:
-    strategy_file=''
-    # strategy_file='log/task2a_10000_q.pt'
-elif param_set==PARAM_TASK2b:
-    strategy_file=''
-
-if strategy_file:
-    evaluate_agent=1
-    human_player=1
-else:
-    evaluate_agent=0
-
-
-# The code below initializes the game parameters for the task selected by 'param_set'
-# Game parameters: 
-# 'N_row' and 'N_col' (integers) gives the size of the game board.
-# 'tile_size' (2 or 4) denotes whether the small tile set (2) or the large tile set (4) should be used
-# 'max_tile_count' (integer) denotes the maximal number of tiles to be placed in one game
-# 'stochastic_prob' (float between 0 and 1) denotes the probability to take a random tile. When stochastic_prob=0 tiles are taken according to a predefined sequence, when stochastic_prob=1 all tiles are random. For values 0<stochastic_prob<1 there is a mixture between deterministic and random tiles
-
-# Training parameters:
-# 'alpha' is learning rate in Q-learning or for the stochastic gradient descent in deep Q-networks
-# 'epsilon' is probability to choose random action in epsilon-greedy policy
-# 'episode_count' is the number of epsiodes a training session lasts
-
-# Additional training parameters for deep Q-networks:
-# 'epsilon_scale' is the scale of the episode number where epsilon_N changes from unity to epsilon
-# 'replay_buffer_size' is the size of the experience replay buffer
-# 'batch_size' is the number of samples taken from the experience replay buffer each update
-# 'sync_target_episode_count' is the number of epsiodes between synchronisations of the target network
-if param_set==PARAM_TASK1test:
-    name = 'test'
-    N_row=8
-    N_col=8
-    tile_size=4
-    max_tile_count=50
-    stochastic_prob=1
-
-    alpha=0.001
-    epsilon=0.01
-    episode_count=100000
-
-    epsilon_scale=50000
-
-    replay_buffer_size=10000
-    batch_size=256
-    sync_target_episode_count=100
-
-    if (not human_player) or evaluate_agent:
-        agent=agentClass.TDQNAgent(alpha,epsilon,epsilon_scale,replay_buffer_size,batch_size,sync_target_episode_count,episode_count)
-elif param_set==PARAM_TASK1a:
-    name = 'task1a'
-    N_row=4
-    N_col=4
-    tile_size=2
-    # max_tile_count=50
-    max_tile_count=50
-    stochastic_prob=0
-
-    alpha=0.2
-    epsilon=0
-    episode_count=1000
-    # episode_count=3
-
-    if (not human_player) or evaluate_agent:
-        agent=agentClass.TQAgent(alpha,epsilon,episode_count)
-elif param_set==PARAM_TASK1b:
-    name = 'task1b'
-    N_row=4
-    N_col=4
-    tile_size=2
-    max_tile_count=50
-    stochastic_prob=0
-
-    alpha=0.2
-    epsilon=0.001
-    episode_count=10000
-
-    if (not human_player) or evaluate_agent:
-        agent=agentClass.TQAgent(alpha,epsilon,episode_count)
-elif param_set==PARAM_TASK1c:
-    name = 'task1c'
-    N_row=4
-    N_col=4
-    tile_size=2
-    max_tile_count=50
-    stochastic_prob=1
-
-    alpha=0.2
-    epsilon=0.001
-    episode_count=200000
-
-    if (not human_player) or evaluate_agent:
-        agent=agentClass.TQAgent(alpha,epsilon,episode_count)
-elif param_set==PARAM_TASK1d:
-    name = 'task1d'
-    N_row=8
-    N_col=8
-    tile_size=4
-    max_tile_count=50
-    stochastic_prob=1
-
-    alpha=0.2
-    epsilon=0.001
-    episode_count=200000
-
-    if (not human_player) or evaluate_agent:
-        agent=agentClass.TQAgent(alpha,epsilon,episode_count)
-elif param_set==PARAM_TASK2a:
-    name = 'task2a'
-    N_row=4
-    N_col=4
-    tile_size=2
-    max_tile_count=50
-    stochastic_prob=1
-
-    alpha=0.001
-    epsilon=0.001
-    episode_count=10000
-
-    epsilon_scale=5000
-    replay_buffer_size=10000
-    batch_size=32
-    sync_target_episode_count=100
-
-    if (not human_player) or evaluate_agent:
-        agent=agentClass.TDQNAgent(alpha,epsilon,epsilon_scale,replay_buffer_size,batch_size,sync_target_episode_count,episode_count)
-
-elif param_set==PARAM_TASK2b:
-    name = 'task2b'
-    N_row=8
-    N_col=8
-    tile_size=4
-    max_tile_count=50
-    stochastic_prob=1
-
-    alpha=0.001
-    epsilon=0.001
-    episode_count=10000
-
-    epsilon_scale=50000
-
-    replay_buffer_size=10000
-    batch_size=32
-    sync_target_episode_count=100
-
-    if (not human_player) or evaluate_agent:
-        agent=agentClass.TDQNAgent(alpha,epsilon,epsilon_scale,replay_buffer_size,batch_size,sync_target_episode_count,episode_count)
-else:
-    print('Erroneouse param_set. Terminating...')
-    raise SystemExit(0)
+if not human_player or evaluate_agent:
+    if not param_set['use_deepq']:
+        agent=agentClass.TQAgent(param_set)
+    else:
+        agent=agentClass.TDQNAgent(param_set)
 
 # The remaining code below is implementation of the game. You don't need to change anything below this line
-
 if evaluate_agent:
     agent_evaluate=agent;
 if human_player:
     agent=agentClass.THumanAgent()
 
-gameboard=gameboardClass.TGameBoard(N_row,N_col,tile_size,max_tile_count,agent,stochastic_prob, name)
+gameboard=gameboardClass.TGameBoard(
+    param_set['N_row'],
+    param_set['N_col'],
+    param_set['tile_size'],
+    param_set['max_tile_count'],
+    agent,
+    param_set['stochastic_prob'],
+    param_set['name'])
 
 if evaluate_agent:
     agent_evaluate.epsilon=0
