@@ -11,6 +11,7 @@ from functools import reduce
 from util import create_action_store, encode_state
 from deepq import DQN
 import torch
+import torch.nn.functional as F
 
 import random
 from copy import deepcopy
@@ -168,7 +169,6 @@ class TDQNAgent:
         self.reward_tots = np.zeros(self.episode_count)
 
         self.max_num_actions = self.gameboard.N_col * 4
-        self.chosen_action = False
 
         self.action_network = DQN(np.size(self.gameboard.board), len(self.gameboard.tiles), self.max_num_actions, 64)
         self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
@@ -193,13 +193,17 @@ class TDQNAgent:
     def fn_select_action(self):
         legal_mask = self.legal_masks[self.gameboard.cur_tile_type]
         legal_actions = np.arange(self.max_num_actions)[legal_mask]
-        if np.random.rand() < max(self.epsilon, 1-self.episode / self.epsilon_scale) and not self.chosen_action:
+        if np.random.rand() < max(self.epsilon, 1-self.episode / self.epsilon_scale):
             self.curr_action = np.random.choice(legal_actions)
-            self.chosen_action = True
         else:
             # Run network
             curr_state = torch.from_numpy(self.curr_state).unsqueeze(0) # Add batch dim
-            options = self.action_network(curr_state)[0,legal_mask]
+            self.action_network.eval()
+            with torch.no_grad():
+                options = self.action_network(curr_state)[0,legal_mask]
+
+            self.action_network.train()
+
             winner = torch.argmax(options)
             self.curr_action = legal_actions[winner]
 
@@ -214,16 +218,25 @@ class TDQNAgent:
         action_batch = action_batch.unsqueeze(1).long()
         nonfinal_mask = nonfinal_mask > 0
 
-        next_state_qualities = torch.zeros(self.batch_size)
-        target_quals, _ = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)
-        next_state_qualities[nonfinal_mask] = target_quals
-        targets = next_state_qualities + reward_batch
-        outputs = self.action_network(old_state_batch).gather(1, action_batch).flatten()
+        state_action_values = self.action_network(old_state_batch).gather(1, action_batch).flatten()
+        next_state_values = torch.zeros(self.batch_size)
+
+        with torch.no_grad():
+            next_state_values[nonfinal_mask] = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)[0]
+
+        expected_state_action_values = next_state_values + reward_batch
 
         self.optimizer.zero_grad()
-        loss = (outputs - targets).pow(2).mean()
+        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
+        # loss = (state_action_values - expected_state_action_values).pow(2).mean()
         loss.backward()
+
+        for param in self.action_network.parameters():
+            param.grad.data.clamp_(-1, 1)
+
         self.optimizer.step()
+
+        self.writer.add_scalar("deepq_agent/loss", loss.item(), self.episode)
 
 
     def fn_turn(self):
@@ -251,7 +264,6 @@ class TDQNAgent:
             self.fn_select_action()
             old_state = self.curr_state.copy()
             reward = self.gameboard.fn_drop()
-            self.chosen_action = False
 
             self.reward_tots[self.episode] += reward
 

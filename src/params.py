@@ -119,6 +119,7 @@ param_task2a =  {
 }
 param_task2b =  {
     'name':  'task2b',
+    # 'strategy_file': 'log/task2b_100000_q.pt',
     'strategy_file': '',
     'human_player': False,
     'evaluate_agent': False,
@@ -128,13 +129,13 @@ param_task2b =  {
     'max_tile_count': 50,
     'stochastic_prob': 1,
     # 'alpha': 0.001,
-    # 'epsilon': 0.001,
-    'alpha': 0.01,
-    'epsilon': 0.01,
+    'epsilon': 0.001,
+    'alpha': 0.2,
+    # 'epsilon': 0.01,
     'episode_count': 100000,
     'epsilon_scale': 50000,
     'replay_buffer_size': 10000,
-    'batch_size': 512,
+    'batch_size': 32,
     'sync_target_episode_count': 100,
     'use_deepq':  True,
 }

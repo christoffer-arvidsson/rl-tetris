@@ -49,8 +49,8 @@ gameboard=gameboardClass.TGameBoard(
 
 if evaluate_agent:
     agent_evaluate.epsilon=0
-    agent_evaluate.fn_init(gameboard, name)
-    agent_evaluate.fn_load_strategy(strategy_file)
+    agent_evaluate.fn_init(gameboard, param_set['name'])
+    agent_evaluate.fn_load_strategy(param_set['strategy_file'])
 
 if isinstance(gameboard.agent,agentClass.THumanAgent):
     # The player is human
@@ -63,6 +63,8 @@ if isinstance(gameboard.agent,agentClass.THumanAgent):
 
     # Initialize the game engine
     pygame.init()
+    N_col = param_set['N_col']
+    N_row = param_set['N_row']
     screen=pygame.display.set_mode((200+N_col*20,150+N_row*20))
     clock=pygame.time.Clock()
     pygame.key.set_repeat(300,100)
