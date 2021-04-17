@@ -99,6 +99,7 @@ param_task1d =  {
 
 param_task2a =  {
     'name':  'task2a',
+    # 'strategy_file': 'log/task2a_5000_q.pt',
     'strategy_file': '',
     'human_player': False,
     'evaluate_agent': False,
@@ -112,14 +113,13 @@ param_task2a =  {
     'episode_count': 10000,
     'epsilon_scale': 5000,
     'replay_buffer_size': 10000,
-    # 'batch_size': 32,
-    'batch_size': 512,
+    'batch_size': 32,
     'sync_target_episode_count': 100,
     'use_deepq':  True,
 }
 param_task2b =  {
     'name':  'task2b',
-    # 'strategy_file': 'log/task2b_100000_q.pt',
+    # 'strategy_file': 'log/task2b_50000_q.pt',
     'strategy_file': '',
     'human_player': False,
     'evaluate_agent': False,
@@ -128,15 +128,13 @@ param_task2b =  {
     'tile_size': 4,
     'max_tile_count': 50,
     'stochastic_prob': 1,
-    # 'alpha': 0.001,
     'epsilon': 0.001,
-    'alpha': 0.2,
-    # 'epsilon': 0.01,
-    'episode_count': 100000,
+    'alpha': 0.00025,
+    'episode_count': 10000,
     'epsilon_scale': 50000,
     'replay_buffer_size': 10000,
     'batch_size': 32,
-    'sync_target_episode_count': 100,
+    'sync_target_episode_count': 500,
     'use_deepq':  True,
 }
 

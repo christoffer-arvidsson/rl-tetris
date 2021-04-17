@@ -172,6 +172,7 @@ class TDQNAgent:
 
         self.action_network = DQN(np.size(self.gameboard.board), len(self.gameboard.tiles), self.max_num_actions, 64)
         self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
+        self.loss = torch.nn.MSELoss()
         self.target_network = deepcopy(self.action_network)
         self.target_network.eval()
 
@@ -194,18 +195,21 @@ class TDQNAgent:
         legal_mask = self.legal_masks[self.gameboard.cur_tile_type]
         legal_actions = np.arange(self.max_num_actions)[legal_mask]
         if np.random.rand() < max(self.epsilon, 1-self.episode / self.epsilon_scale):
+            # self.curr_action = np.random.choice(np.arange(self.max_num_actions))
             self.curr_action = np.random.choice(legal_actions)
         else:
             # Run network
             curr_state = torch.from_numpy(self.curr_state).unsqueeze(0) # Add batch dim
             self.action_network.eval()
             with torch.no_grad():
-                options = self.action_network(curr_state)[0,legal_mask]
+                options = self.action_network(curr_state)[0, legal_mask]
+            # print(options)
 
             self.action_network.train()
 
             winner = torch.argmax(options)
             self.curr_action = legal_actions[winner]
+            # self.curr_action = winner
 
         # Apply action
         loc, rot = self.action_store[self.curr_action]
@@ -213,27 +217,23 @@ class TDQNAgent:
         if invalid:
             print("INVALID")
 
+
     def fn_reinforce(self,batch):
         old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask = tuple(map(torch.Tensor, zip(*batch)))
         action_batch = action_batch.unsqueeze(1).long()
         nonfinal_mask = nonfinal_mask > 0
 
-        state_action_values = self.action_network(old_state_batch).gather(1, action_batch).flatten()
+        state_action_values = self.action_network(old_state_batch).gather(1, action_batch)
         next_state_values = torch.zeros(self.batch_size)
-
-        with torch.no_grad():
-            next_state_values[nonfinal_mask] = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)[0]
-
+        next_state_values[nonfinal_mask] = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)[0]
         expected_state_action_values = next_state_values + reward_batch
 
+        # loss = self.loss(state_action_values, expected_state_action_values.unsqueeze(1))
+        # loss = (state_action_values - expected_state_action_values.unsqueeze(1)).pow(2).mean()
+        loss = (expected_state_action_values.unsqueeze(1) - state_action_values).pow(2).mean()
+
         self.optimizer.zero_grad()
-        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
-        # loss = (state_action_values - expected_state_action_values).pow(2).mean()
         loss.backward()
-
-        for param in self.action_network.parameters():
-            param.grad.data.clamp_(-1, 1)
-
         self.optimizer.step()
 
         self.writer.add_scalar("deepq_agent/loss", loss.item(), self.episode)
@@ -270,7 +270,7 @@ class TDQNAgent:
             self.fn_read_state()
             next_state = self.curr_state.copy()
             nonfinal_state = not self.gameboard.gameover
-            entry = (old_state.copy(), self.curr_action, reward, next_state, nonfinal_state)
+            entry = (old_state.copy(), self.curr_action, reward, next_state.copy(), nonfinal_state)
             self.exp_buffer.push(entry)
 
             if len(self.exp_buffer) >= self.replay_buffer_size:
