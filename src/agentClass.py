@@ -116,6 +116,7 @@ class TQAgent:
             # Update the Q-table using the old state and the reward (the new state and the taken action should be stored as attributes in self)
             self.fn_reinforce(old_state,reward)
 
+
 class ReplayBuffer(object):
     """ Cyclic replay buffer. """
     def __init__(self, capacity):
@@ -159,6 +160,8 @@ class TDQNAgent:
                     loc, rot = self.action_store[act]
                     is_valid = not self.gameboard.fn_move(loc, rot)
                     legal_masks[t, act] = is_valid
+                    legal_masks[t, act] = True
+
 
             return legal_masks
 
@@ -194,6 +197,7 @@ class TDQNAgent:
     def fn_select_action(self):
         legal_mask = self.legal_masks[self.gameboard.cur_tile_type]
         legal_actions = np.arange(self.max_num_actions)[legal_mask]
+
         if np.random.rand() < max(self.epsilon, 1-self.episode / self.epsilon_scale):
             # self.curr_action = np.random.choice(np.arange(self.max_num_actions))
             self.curr_action = np.random.choice(legal_actions)
@@ -214,8 +218,8 @@ class TDQNAgent:
         # Apply action
         loc, rot = self.action_store[self.curr_action]
         invalid = self.gameboard.fn_move(loc, rot)
-        if invalid:
-            print("INVALID")
+        # if invalid:
+        #     print("INVALID")
 
 
     def fn_reinforce(self,batch):
@@ -228,9 +232,11 @@ class TDQNAgent:
         next_state_values[nonfinal_mask] = torch.max(self.target_network(new_state_batch[nonfinal_mask]), dim=1)[0]
         expected_state_action_values = next_state_values + reward_batch
 
-        # loss = self.loss(state_action_values, expected_state_action_values.unsqueeze(1))
+        loss = self.loss(expected_state_action_values.unsqueeze(1), state_action_values)
         # loss = (state_action_values - expected_state_action_values.unsqueeze(1)).pow(2).mean()
-        loss = (expected_state_action_values.unsqueeze(1) - state_action_values).pow(2).mean()
+        # loss = (expected_state_action_values.unsqueeze(1) - state_action_values).pow(2).mean()
+        # loss = F.smooth_l1_loss(expected_state_action_values.unsqueeze(1), state_action_values)
+
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -242,10 +248,15 @@ class TDQNAgent:
     def fn_turn(self):
         if self.gameboard.gameover:
             self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode], self.episode)
+
+            epsilon = max(self.epsilon, 1-self.episode / self.epsilon_scale)
+            self.writer.add_scalar("deepq_agent/epsilon", epsilon, self.episode)
+
             self.episode+=1
             if self.episode%100==0:
                 print('episode '+str(self.episode)+'/'+str(self.episode_count)+' (reward: ',str(np.sum(self.reward_tots[range(self.episode-100,self.episode)])),')')
-                self.writer.add_scalar("deepq_agent/average", self.reward_tots[self.episode-100:].sum(), self.episode)
+                self.writer.add_scalar("deepq_agent/sum100", self.reward_tots[self.episode-100:].sum(), self.episode)
+                self.writer.add_scalar("deepq_agent/average100", self.reward_tots[self.episode-100:].mean(), self.episode)
             if self.episode%1000==0:
                 saveEpisodes=[1000,2000,5000,10000,20000,50000,100000,200000,500000,1000000];
                 if self.episode in saveEpisodes:

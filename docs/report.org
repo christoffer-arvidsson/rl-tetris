@@ -8,6 +8,7 @@
 #+include: "../src/deepq.py" src python
 
 * Results
+#+attr_org: :width 1000
 #+attr_latex: :width 1.0\textwidth
 #+caption: Total reward for the different parameter sets. Gray is the reward at each episode and red is the rolling average over 100 episodes.
 #+RESULTS: code:reward-plots
