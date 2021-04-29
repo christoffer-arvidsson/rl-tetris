@@ -15,3 +15,4 @@ def encode_state(board_state, class_state):
     board_id = (binary_rep * board_state.flatten()).sum(dtype=int)
     class_id = class_state << np.size(board_state)
     return board_id + class_id
+

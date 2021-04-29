@@ -21,7 +21,8 @@ if len(sys.argv):
         human_player = True
         evaluate_agent = True
 else:
-    # Choose to control the game yourself ('human_player=1') to test the setups in the different tasks
+    # Choose to control the game yourself ('human_player=1') to test the setups
+    # in the different tasks
     param_set=params['1a']
     human_player=True
     evaluate_agent = False
@@ -32,7 +33,8 @@ if not human_player or evaluate_agent:
     else:
         agent=agentClass.TDQNAgent(param_set)
 
-# The remaining code below is implementation of the game. You don't need to change anything below this line
+# The remaining code below is implementation of the game. You don't need to
+# change anything below this line
 if evaluate_agent:
     agent_evaluate=agent;
 if human_player:
