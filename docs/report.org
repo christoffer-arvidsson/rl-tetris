@@ -43,7 +43,7 @@ mpl.rcParams.update({
 def plot_rewards(ax, path, title):
     data = np.load(path)
     xs = np.arange(len(data))
-    ax.plot(xs, data, c='black', alpha=0.5, linewidth=0.3, label='Per episode')
+    ax.plot(xs, data, c='black', alpha=0.3, linewidth=0.3, label='Per episode')
 
     N = 100
     moving_average = uniform_filter1d(data, size=N)
@@ -69,7 +69,7 @@ titles = [
     '(2a)',
 ]
 
-fig, axes = plt.subplots(2,2, figsize=(10,7))
+fig, axes = plt.subplots(2,2, figsize=(10,7), dpi=300)
 
 for i, ax in enumerate(axes.reshape(-1)):
     plot_rewards(ax, paths[i], titles[i])

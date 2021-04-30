@@ -155,19 +155,16 @@ class TDQNAgent:
                     loc, rot = self.action_store[act]
                     is_valid = not self.gameboard.fn_move(loc, rot)
                     legal_masks[t, act] = is_valid
-                    legal_masks[t, act] = True
 
             return legal_masks
 
         self.gameboard=gameboard
         self.experiment_name = name
-
         self.writer = SummaryWriter("./log/" + self.experiment_name + '_' + datetime.now().strftime("%Y%m%d-%H%M%S"))
         self.reward_tots = np.zeros(self.episode_count)
 
         self.max_num_actions = self.gameboard.N_col * 4
         self.current_epsilon = self.initial_epsilon
-        self.current_epsilon_threshold = 0
 
         self.beta = self.initial_beta # Importance sampling
 
@@ -178,10 +175,13 @@ class TDQNAgent:
         self.target_network.eval()
 
         self.exp_buffer = PrioritizedReplayBuffer(self.replay_buffer_size, self.replay_prioritization)
+
+        # Action decoding
         self.action_store = create_action_store(self.gameboard.N_col, 4)
         self.legal_masks = compute_legal_masks(self)
         self.legal_count = np.zeros((len(gameboard.tiles), self.max_num_actions), dtype=int)
 
+        # Trick to make evaluation look properly
         self.chosen_action = True
         self.sync_step_count = 0
 
@@ -191,6 +191,7 @@ class TDQNAgent:
         self.target_network.eval()
 
     def fn_read_state(self):
+        """Encode state by concatenating board and tile."""
         board_state = self.gameboard.board.copy().flatten()
         class_state = np.zeros(len(self.gameboard.tiles), dtype=bool)
         class_state[self.gameboard.cur_tile_type] = True
@@ -202,20 +203,17 @@ class TDQNAgent:
             self.current_epsilon = max(self.epsilon, 1-self.episode / self.epsilon_scale)
         elif self.epsilon_decay_method == "exponential":
             self.current_epsilon = max(self.epsilon, self.epsilon_exponential_factor * self.current_epsilon)
-        elif self.epsilon_decay_method == "reward":
-            if self.current_epsilon > self.epsilon and self.reward_tots[self.episode] >= self.epsilon_reward_thresholds[self.current_epsilon_threshold]:
-                self.current_epsilon = self.initial_epsilon / (self.current_epsilon_threshold+1)
-                self.current_epsilon_threshold += 1
 
     def fn_select_action(self):
+        """Select action either by epsilon-greedy or from network. Only legal actions are selected."""
         legal_mask = self.legal_masks[self.gameboard.cur_tile_type]
         legal_actions = np.arange(self.max_num_actions)[legal_mask]
 
+        # Epsilon-greedy
         if np.random.rand() < self.current_epsilon and not self.chosen_action and self.epsilon != 0:
             self.curr_action = np.random.choice(legal_actions)
             self.chosen_action = True
-        else:
-            # Run network
+        else: # network
             curr_state = torch.from_numpy(self.curr_state).unsqueeze(0) # Add batch dim
 
             self.action_network.eval()
@@ -226,43 +224,42 @@ class TDQNAgent:
             winner = torch.argmax(options)
             self.curr_action = legal_actions[winner]
 
-        # Apply action
+        # Decode and apply action
         loc, rot = self.action_store[self.curr_action]
         invalid = self.gameboard.fn_move(loc, rot)
 
     def fn_reinforce(self,batch):
+        """Reinforce batch of transitions."""
+        # priority and importance sampling
         weights, idxs = batch[1:]
         weights = torch.tensor(weights)
+
         samples = batch[0]
         old_state_batch, action_batch, reward_batch, new_state_batch, nonfinal_mask, legal_masks = tuple(map(torch.Tensor, zip(*samples)))
         action_batch = action_batch.unsqueeze(1).long()
-        nonfinal_mask = nonfinal_mask > 0
+        nonfinal_mask = nonfinal_mask == True
         illegal_masks = legal_masks == False
 
         state_action_values = self.action_network(old_state_batch).gather(1, action_batch)
         next_state_values = torch.zeros(self.batch_size)
         with torch.no_grad():
-            next_state_values[nonfinal_mask] = torch.max(
+            next_state_values[nonfinal_mask], _ = torch.max(
                 self.target_network(new_state_batch[nonfinal_mask]) - 1e5 * illegal_masks[nonfinal_mask],
                 dim=1
-            )[0]
+            )
 
         expected_state_action_values = next_state_values + reward_batch
-
         td_error = (expected_state_action_values - state_action_values[:,0])
-
         loss = td_error.pow(2) * weights
         priorities = (torch.abs(td_error) + 1e-5).detach().numpy()
         loss = loss.mean()
 
         self.optimizer.zero_grad()
         loss.backward()
-        for param in self.action_network.parameters():
-            param.grad.data.clamp_(-1, 1)
         self.exp_buffer.update_priorities(idxs, priorities)
         self.optimizer.step()
 
-        self.writer.add_scalar("deepq_agent/loss", loss.item(), self.episode)
+        return loss
 
     def fn_turn(self):
         if self.gameboard.gameover:
@@ -270,7 +267,7 @@ class TDQNAgent:
             self.update_epsilon()
             self.beta = min(self.initial_beta + (self.episode+1) / self.episode_count, 1.0)
 
-            # Logging reward
+            # Logging
             self.writer.add_scalar("deepq_agent/reward", self.reward_tots[self.episode], self.episode)
             self.writer.add_scalar("deepq_agent/epsilon", self.current_epsilon, self.episode)
             self.writer.add_scalar("deepq_agent/priority_beta", self.beta, self.episode)
@@ -283,7 +280,6 @@ class TDQNAgent:
             if self.episode%5000==0:
                 torch.save(self.action_network.state_dict(), f'log/{self.experiment_name}_{self.episode}_q.pt')
                 np.save(f'log/{self.experiment_name}_{self.episode}_rewards', self.reward_tots)
-
 
             if self.episode>=self.episode_count:
                 raise SystemExit(0)
@@ -305,10 +301,12 @@ class TDQNAgent:
             entry = (old_state.copy(), self.curr_action, reward, next_state.copy(), nonfinal_state, self.legal_masks[self.gameboard.cur_tile_type])
             self.exp_buffer.push(entry)
 
+            # Sample from replay buffer
             self.sync_step_count += 1
             if len(self.exp_buffer) >= self.replay_buffer_size:
                 batch = self.exp_buffer.sample(self.batch_size, self.beta)
-                self.fn_reinforce(batch)
+                loss = self.fn_reinforce(batch)
+                self.writer.add_scalar("deepq_agent/loss", loss.item(), self.episode)
 
                 if self.episode % self.sync_target_step_count == 0:
                     self.target_network.load_state_dict(self.action_network.state_dict())

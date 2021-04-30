@@ -120,7 +120,7 @@ param_task2a =  {
 
     'episode_count': 10000,
     'replay_buffer_size': 10000,
-    'replay_prioritization': 0.8,
+    'replay_prioritization': 1.0,
     'initial_beta': 0.001,
     'batch_size': 32,
     'sync_target_step_count': 100,
@@ -129,7 +129,7 @@ param_task2a =  {
 param_task2b =  {
     'name':  'task2b',
     'strategy_file': '',
-    'strategy_file': 'log/task2b_5000_q.pt',
+    'strategy_file': 'log/task2b_600000_q.pt',
     'human_player': False,
     'evaluate_agent': False,
     'N_row': 8,
@@ -138,20 +138,20 @@ param_task2b =  {
     'max_tile_count': 50,
     'stochastic_prob': 1.0,
     'alpha': 1e-3,
-    'discount_factor': 0.95,
-    'episode_count': 150000,
+    'discount_factor': 0.999,
+    'episode_count': 1500000,
 
     'epsilon_decay_method': 'exponential',
     'epsilon_linear_scale': None,
-    'epsilon_exponential_factor': 0.999,
+    'epsilon_exponential_factor': 0.9999,
     'epsilon_reward_thresholds': None,
     'epsilon': 0.01,
     'initial_epsilon': 1.0,
 
-    'replay_buffer_size': 100000,
+    'replay_buffer_size': 50000,
     'replay_prioritization': 0.8,
     'initial_beta': 0.4,
-    'batch_size': 64,
+    'batch_size': 32,
     'sync_target_step_count': 500,
     'use_deepq':  True,
 }
