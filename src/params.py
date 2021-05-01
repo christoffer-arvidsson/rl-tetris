@@ -19,20 +19,30 @@
 param_debug = {
     'name':  'debug',
     'strategy_file': '',
+    # 'strategy_file': 'log/debug_25000_q.pt',
     'human_player': False,
     'evaluate_agent': False,
     'N_row': 8,
     'N_col': 8,
     'tile_size': 4,
     'max_tile_count': 50,
-    'stochastic_prob': 0,
-    'epsilon': 0.001,
-    'alpha': 0.01,
-    'episode_count': 100000,
-    'epsilon_scale': 50000,
-    'replay_buffer_size': 10000,
+    'stochastic_prob': 1.0,
+    'alpha': 1e-3,
+    'discount_factor': 0.999,
+    'episode_count': 1500000,
+
+    'epsilon_decay_method': 'exponential',
+    'epsilon_linear_scale': None,
+    'epsilon_exponential_factor': 0.999,
+    'epsilon_reward_thresholds': None,
+    'epsilon': 0.01,
+    'initial_epsilon': 1.0,
+
+    'replay_buffer_size': 50000,
+    'replay_prioritization': 0.8,
+    'initial_beta': 0.4,
     'batch_size': 32,
-    'sync_target_episode_count': 1000,
+    'sync_target_step_count': 500,
     'use_deepq':  True,
 }
 param_task1a = {
@@ -123,7 +133,7 @@ param_task2a =  {
     'replay_prioritization': 1.0,
     'initial_beta': 0.001,
     'batch_size': 32,
-    'sync_target_step_count': 100,
+    'sync_target_step_count': 500,
     'use_deepq':  True,
 }
 param_task2b =  {

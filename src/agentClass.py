@@ -10,7 +10,7 @@ from functools import reduce
 
 from util import create_action_store, encode_state
 from replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
-from deepq import DQN
+from deepq import DQN, DuelingDQN
 
 import torch
 import torch.nn.functional as F
@@ -37,6 +37,7 @@ class TQAgent:
                     loc, rot = self.action_store[act]
                     is_valid = not self.gameboard.fn_move(loc, rot)
                     legal_masks[t, act] = is_valid
+                    legal_masks[t, act] = True
 
 
             self.gameboard.cur_tile_type = tile
@@ -168,7 +169,7 @@ class TDQNAgent:
 
         self.beta = self.initial_beta # Importance sampling
 
-        self.action_network = DQN(np.size(self.gameboard.board), len(self.gameboard.tiles), self.max_num_actions, 64)
+        self.action_network = DuelingDQN(np.size(self.gameboard.board), len(self.gameboard.tiles), self.max_num_actions, 64)
         self.optimizer = torch.optim.Adam(self.action_network.parameters(), lr=self.alpha)
         self.loss = torch.nn.MSELoss()
         self.target_network = deepcopy(self.action_network)
@@ -308,7 +309,7 @@ class TDQNAgent:
                 loss = self.fn_reinforce(batch)
                 self.writer.add_scalar("deepq_agent/loss", loss.item(), self.episode)
 
-                if self.episode % self.sync_target_step_count == 0:
+                if self.sync_step_count % self.sync_target_step_count == 0:
                     self.target_network.load_state_dict(self.action_network.state_dict())
                     self.sync_step_count = 0
 

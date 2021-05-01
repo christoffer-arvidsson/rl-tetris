@@ -1,0 +1,14 @@
+#+TITLE: Report
+
+* Size of Q-table
+Start with a simple q-table:
+1. State
+   - Gameboard: binary matrix $(4\times4)$
+   - Current piece: 1 of 4 classes
+2. Actions
+   - variable amount of locations based on piece size
+   - variable amount of rotation states based on piece
+
+We need to consider the piece with the most actions to define table size.
+Begin with $4\times4$ state and $4\times4$ action size
+
