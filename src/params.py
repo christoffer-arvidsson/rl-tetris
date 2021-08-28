@@ -17,7 +17,7 @@
 # 'sync_target_episode_count' is the number of epsiodes between synchronisations of the target network
 #
 param_debug = {
-    'name':  'debug',
+    'name':  'dueldqn',
     'strategy_file': '',
     # 'strategy_file': 'log/debug_25000_q.pt',
     'human_player': False,
@@ -33,7 +33,7 @@ param_debug = {
 
     'epsilon_decay_method': 'exponential',
     'epsilon_linear_scale': None,
-    'epsilon_exponential_factor': 0.999,
+    'epsilon_exponential_factor': 0.9999,
     'epsilon_reward_thresholds': None,
     'epsilon': 0.01,
     'initial_epsilon': 1.0,

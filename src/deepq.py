@@ -71,7 +71,7 @@ class DuelingDQN(torch.nn.Module):
             nn.ReLU(),
             nn.Flatten(),
         )
-        self.feature_size = 263 # outputs from conv net
+        self.feature_size = 68 # outputs from conv net
 
         self.value_net = nn.Sequential(
             nn.Linear(self.feature_size, n_hidden),

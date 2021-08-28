@@ -156,6 +156,7 @@ class TDQNAgent:
                     loc, rot = self.action_store[act]
                     is_valid = not self.gameboard.fn_move(loc, rot)
                     legal_masks[t, act] = is_valid
+                    legal_masks[t, act] = True
 
             return legal_masks
 
