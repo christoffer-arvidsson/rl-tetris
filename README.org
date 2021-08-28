@@ -1,0 +1,15 @@
+:metadata:
+#+setupfile: ./setup_file.org
+#+roam_alias: "Playing Tetris with Reinforcement Learning"
+#+roam_tags: project ml
+#+created: [2021-04-23 Fri]
+:end:
+#+title: Playing Tetris with Reinforcement Learning
+
+This project uses a simplified Tetris version to train two simple [[file:../../20210325170938-reinforcement_learning.org][Reinforcement
+learning]] agents ([[file:../../20210326105921-q_learning.org][Q-learning]], [[file:../../20210416213421-deep_q_learning.org][Deep Q-learning]]).
+
+* Material
+
+bibliography:../../bibliography/references.bib
+bibliographystyle:ieeetr
